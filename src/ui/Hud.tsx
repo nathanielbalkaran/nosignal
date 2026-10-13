@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { clock, formatClock } from '../game/clock.ts'
-import { session, useGame } from '../game/session.ts'
+import { session, useGame, type Prompt } from '../game/session.ts'
 import { PRIMARY, type } from './typography.ts'
 
 const SHOW_MS = 3000
@@ -28,10 +28,22 @@ const watch: CSSProperties = {
 const warning: CSSProperties = { ...base, ...type.readout, top: 100, letterSpacing: '0.2em', color: '#d9a36a' }
 const prompt: CSSProperties = { ...base, ...type.prompt, bottom: '22%', padding: '6px 14px', background: 'rgba(14, 13, 20, 0.6)' }
 
+const PROMPT_TEXT: Record<Exclude<Prompt, null>, string> = {
+  restaurant: '[E] ENTER 茶餐廳',
+  enter: 'E — ENTER STATION',
+  explore: 'STATION ENTRANCE',
+  cat: '[E] PET CAT',
+  vending: '[E] USE VENDING MACHINE',
+  phone: '[E] USE PHONE',
+  roof: '[E] ENTER STAIRWELL',
+  arcade: '[E] PLAY ARCADE',
+}
+
 /** Wristwatch (T), the single two-minute warning, and the station entrance prompt. */
 export function Hud() {
-  const { state, mode, runId, warningRun, prompt: promptKind } = useGame()
-  const playing = state === 'PLAYING'
+  const { state, mode, runId, warningRun, prompt: promptKind, place } = useGame()
+  // The tea break hides the whole gameplay interface.
+  const playing = state === 'PLAYING' && place !== 'TABLE' && place !== 'ROOF' && place !== 'ROOF_SEAT' && place !== 'ARCADE'
 
   // Wristwatch: `watchId` restarts the 3 s window on every press of T.
   const [watchId, setWatchId] = useState(0)
@@ -40,7 +52,8 @@ export function Hud() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== 'KeyT' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
-      if (session.getStatus() !== 'PLAYING') return
+      const where = session.getSnapshot().place
+      if (session.getStatus() !== 'PLAYING' || where === 'TABLE' || where === 'ROOF' || where === 'ROOF_SEAT' || where === 'ARCADE') return
       setWatchId((n) => n + 1)
       setWatchVisible(true)
     }
@@ -75,9 +88,7 @@ export function Hud() {
         {mode === 'PLAY' && <div style={{ ...type.readoutSmall, letterSpacing: '0.12em', opacity: 0.7, marginTop: 4 }}>TRAIN DEPARTS 05:21</div>}
       </div>
       <div style={{ ...warning, opacity: playing && warningVisible ? 0.9 : 0 }} role="status">02:00 REMAINING</div>
-      {playing && promptKind && (
-        <div style={prompt}>{promptKind === 'enter' ? 'E — ENTER STATION' : 'STATION ENTRANCE'}</div>
-      )}
+      {playing && promptKind && <div style={prompt}>{PROMPT_TEXT[promptKind]}</div>}
     </>
   )
 }

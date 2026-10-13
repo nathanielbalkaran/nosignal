@@ -6,7 +6,7 @@ import type { CSSProperties } from 'react'
  * The HTML UI renders at native resolution, never in the low-res 3D buffer.
  * Keep sizes at or above the minimums here so pixel text stays readable.
  */
-export const PRIMARY = "'Pixelify Sans', ui-monospace, monospace"
+export const PRIMARY = "'Pixelify Sans', 'PingFang HK', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'Heiti TC', ui-monospace, monospace"
 export const SECONDARY = "'VT323', ui-monospace, monospace"
 
 const word = (size: number, spacing = '0.08em'): CSSProperties => ({ fontFamily: PRIMARY, fontSize: size, letterSpacing: spacing, fontWeight: 400 })

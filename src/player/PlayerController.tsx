@@ -39,10 +39,10 @@ export function PlayerController() {
     }
     // Held keys never survive leaving gameplay (pause, win, loss, title).
     const unsubscribe = session.subscribe(() => {
-      if (session.getStatus() !== 'PLAYING') keyboard.clear()
+      if (!session.canMove()) keyboard.clear()
     })
     const onMouseMove = (e: MouseEvent) => {
-      if (document.pointerLockElement !== canvas) return
+      if (document.pointerLockElement !== canvas || !session.canMove()) return
       if (Math.abs(e.movementX) > MAX_MOUSE_DELTA || Math.abs(e.movementY) > MAX_MOUSE_DELTA) return
       playerState.yaw -= e.movementX * PLAYER.lookSensitivity
       playerState.pitch = Math.max(
@@ -64,7 +64,13 @@ export function PlayerController() {
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, MAX_FRAME_TIME)
-    if (session.getStatus() === 'PLAYING') {
+    // Indoors (the fixed restaurant scenes) the restaurant rig owns the camera; the outdoor pose is kept untouched.
+    if (session.getSnapshot().view !== 'STREET') {
+      velocity.current.x = 0
+      velocity.current.z = 0
+      return
+    }
+    if (session.canMove()) {
       const input: MoveInput = { forward: 0, strafe: 0 }
       if (keyboard.isDown('KeyW', 'ArrowUp')) input.forward += 1
       if (keyboard.isDown('KeyS', 'ArrowDown')) input.forward -= 1

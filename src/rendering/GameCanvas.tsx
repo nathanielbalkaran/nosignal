@@ -3,8 +3,12 @@ import { useEffect } from 'react'
 import { ACESFilmicToneMapping, SRGBColorSpace } from 'three'
 import { SCENE, retroDpr } from '../config/scene.ts'
 import { AmbientAudio } from '../audio/AmbientAudio.tsx'
-import { useGame } from '../game/session.ts'
+import { useGame, useView } from '../game/session.ts'
 import { PlayerController } from '../player/PlayerController.tsx'
+import { Cat } from './discoveries/Cat.tsx'
+import { RooftopScene } from './discoveries/RooftopScene.tsx'
+import { DiscoveryScenes } from './discoveries/scenes.tsx'
+import { RestaurantScene } from './restaurant/RestaurantScene.tsx'
 import { StationInteraction } from '../player/StationInteraction.tsx'
 import { AmbientLife } from './ambient/AmbientLife.tsx'
 import { Ground } from './Ground.tsx'
@@ -24,6 +28,8 @@ function RetroResolution() {
 export function GameCanvas() {
   // A new run remounts only the ambient layer, so one-shot events and figures can play again.
   const { runId } = useGame()
+  // The city is hidden while the player is inside the restaurant; only the compact interior is drawn.
+  const outdoors = useView() === 'STREET'
   const { camera, sky, fog } = SCENE
 
   return (
@@ -35,12 +41,18 @@ export function GameCanvas() {
       <color attach="background" args={[sky]} />
       <fogExp2 attach="fog" args={[fog.color, fog.density]} />
       <RetroResolution />
-      <Sky />
-      <Skyline />
-      <Lighting />
-      <Ground />
-      <WorldView />
-      <AmbientLife key={runId} />
+      <group visible={outdoors}>
+        <Sky />
+        <Skyline />
+        <Lighting />
+        <Ground />
+        <WorldView />
+        <AmbientLife key={runId} />
+      </group>
+      <RestaurantScene />
+      <DiscoveryScenes />
+      <RooftopScene />
+      <Cat />
       <AmbientAudio />
       <PlayerController />
       <StationInteraction />

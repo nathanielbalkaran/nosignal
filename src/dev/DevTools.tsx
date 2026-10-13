@@ -29,7 +29,7 @@ function applyUrlOptions() {
 applyUrlOptions()
 
 // Test hooks for automation and the console.
-;(window as unknown as { __game: unknown }).__game = { session, clock, playerState }
+;(window as unknown as { __game: unknown }).__game = { session, clock, playerState, world }
 
 /** Dev shortcuts: F6 reset player, F7 reset clock, F8 freeze clock, F9 set 30 s remaining. */
 function devShortcut(code: string) {
