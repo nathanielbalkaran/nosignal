@@ -1,4 +1,4 @@
-import { session, type SessionStatus } from '../../game/session.ts'
+import { session, type GameState } from '../../game/session.ts'
 import { mixer } from '../mixer.ts'
 import { DEFAULT_TRACK, FADE_END_MS, FADE_IN_MS, FADE_OUT_MS, MUSIC_BASE_GAIN, TRACKS, trackUrl } from './tracks.ts'
 
@@ -115,29 +115,15 @@ class MusicPlayer {
       this.hidden = document.hidden
       this.sync()
     }
-    // Browsers block sound until the page has had a user gesture, so any first interaction unlocks it.
-    const onGesture = () => {
-      removeGestureListeners()
-      this.unlock()
-    }
-    const gestureEvents = ['pointerdown', 'keydown', 'touchstart'] as const
-    const removeGestureListeners = () => {
-      for (const type of gestureEvents) window.removeEventListener(type, onGesture, true)
-    }
-    for (const type of gestureEvents) window.addEventListener(type, onGesture, true)
-
     const unsubscribe = session.subscribe(onStatus)
     // Slider changes apply to the live element at once; no restart, no seek.
     const unsubscribeMixer = mixer.subscribe(() => this.applyVolume())
     document.addEventListener('visibilitychange', onVisibility)
     this.hidden = document.hidden
-    this.playing = session.getStatus() !== 'paused'
-    // Try to start as soon as the page opens; if the browser refuses, the first gesture does it.
-    this.unlocked = true
-    this.ensureAudio()
+    // Nothing plays until the player has chosen a mode (unlock is called from that click).
+    this.playing = session.getStatus() === 'PLAYING'
     this.sync()
     return () => {
-      removeGestureListeners()
       unsubscribe()
       unsubscribeMixer()
       document.removeEventListener('visibilitychange', onVisibility)
@@ -161,10 +147,14 @@ class MusicPlayer {
     this.unlocked = false
   }
 
-  private onStatus(status: SessionStatus) {
+  private onStatus(status: GameState) {
     const wasPlaying = this.playing
-    // Music plays on the title screen and in-game; only a pause stops it.
-    this.playing = status !== 'paused'
+    // Music plays during active gameplay only; pause, title and endings stop it.
+    this.playing = status === 'PLAYING'
+    if (status === 'WON' || status === 'LOST') {
+      this.endGame()
+      return
+    }
     if (this.playing === wasPlaying) return
     this.sync()
   }
@@ -268,7 +258,7 @@ class MusicPlayer {
 
   /** effective volume = base gain × music channel volume × fade gain. */
   private applyVolume() {
-    if (this.audio) this.audio.volume = Math.max(0, Math.min(1, MUSIC_BASE_GAIN * mixer.get('music') * this.level))
+    if (this.audio) this.audio.volume = Math.max(0, Math.min(1, MUSIC_BASE_GAIN * mixer.effective('music') * this.level))
   }
 
   private cancelFade() {

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { placePlayer, playerState } from '../player/playerState.ts'
+import { clock, LIMIT_MS } from '../game/clock.ts'
+import { session } from '../game/session.ts'
+import { placePlayer, playerState, resetPlayer } from '../player/playerState.ts'
 import { standingHeight } from '../world/collision.ts'
 import { world } from '../world/index.ts'
 import { DevHud } from './DevHud.tsx'
@@ -26,12 +28,38 @@ function applyUrlOptions() {
 }
 applyUrlOptions()
 
+// Test hooks for automation and the console.
+;(window as unknown as { __game: unknown }).__game = { session, clock, playerState, world }
+
+/** Dev shortcuts: F6 reset player, F7 reset clock, F8 freeze clock, F9 set 30 s remaining. */
+function devShortcut(code: string) {
+  switch (code) {
+    case 'F6':
+      resetPlayer()
+      break
+    case 'F7':
+      clock.reset()
+      break
+    case 'F8':
+      session.setFrozen(!session.isFrozen())
+      break
+    case 'F9':
+      clock.setElapsed(LIMIT_MS - 30_000)
+      break
+  }
+}
+
 /** Development-only tools. Loaded lazily and excluded from production builds. */
 export default function DevTools() {
   const [mapOpen, setMapOpen] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!e.repeat && /^F[6-9]$/.test(e.code)) {
+        e.preventDefault()
+        devShortcut(e.code)
+        return
+      }
       if (e.code !== 'KeyM' || e.repeat) return
       setMapOpen((open) => {
         if (!open) document.exitPointerLock()

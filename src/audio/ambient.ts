@@ -29,10 +29,12 @@ interface Bed {
   current: number
 }
 
-type Levels = Record<ZoneName, number> & { trunk: number; vehicle: number }
+type Levels = Record<ZoneName, number> & { trunk: number; vehicle: number; indoor: number; above: number }
 
 interface Shot {
   zone: ZoneName | null
+  /** Only plays inside the restaurant scenes. */
+  indoorOnly?: boolean
   min: number
   max: number
   next: number
@@ -54,13 +56,15 @@ class AmbientAudio {
   private active = 0
   private readonly rng = new Rng('audio:schedule')
   private vehicle = 0
+  /** A car passing the restaurant window, heard through the glass. */
+  private windowVehicle = 0
 
   private readonly beds: Bed[] = [
-    bed('traffic', (l) => 0.2 + 0.2 * l.trunk, { lowpass: 900 }),
+    bed('traffic', (l) => (0.2 + 0.2 * l.trunk) * (1 - 0.45 * l.indoor) * (1 - 0.3 * l.above), { lowpass: 900 }),
     bed('hum', () => 0.09),
-    bed('vent', (l) => 0.035 + 0.14 * l.residential, { rate: 0.9 }),
+    bed('vent', (l) => (0.035 + 0.14 * l.residential) * (1 - 0.5 * l.indoor), { rate: 0.9 }),
     bed('fan', (l) => 0.2 * l.restaurant),
-    bed('rail', (l) => 0.2 * l.station),
+    bed('rail', (l) => 0.2 * l.station + 0.035 * l.railFar),
     bed('engine', (l) => 0.5 * l.vehicle, { lowpass: 500 }),
   ]
 
@@ -68,11 +72,15 @@ class AmbientAudio {
     { zone: null, min: 14, max: 34, next: 6, pick: (r) => ({ sound: r.chance(0.5) ? 'birdA' : 'birdB', gain: r.range(0.05, 0.1), rate: r.range(0.85, 1.25) }) },
     { zone: null, min: 25, max: 60, next: 20, pick: (r) => ({ sound: r.chance(0.5) ? 'thump' : 'pipe', gain: 0.07, rate: r.range(0.9, 1.1), lowpass: 800 }) },
     { zone: 'restaurant', min: 4, max: 10, next: 2, pick: (r) => ({ sound: r.chance(0.5) ? 'dishesA' : 'dishesB', gain: 0.4, rate: r.range(0.95, 1.08) }) },
+    // Indoors only: a spoon on a cup, a pot lid, far off in the kitchen. Quiet and rare.
+    { zone: 'restaurant', indoorOnly: true, min: 11, max: 26, next: 7, pick: (r) => ({ sound: r.chance(0.6) ? 'dishesB' : 'clank', gain: 0.1, rate: r.range(1.3, 1.7), lowpass: 1800 }) },
     { zone: 'market', min: 16, max: 34, next: 8, pick: (r) => ({ sound: 'shutter', gain: 0.3, rate: r.range(0.9, 1.15), lowpass: 2500 }) },
     { zone: 'market', min: 20, max: 44, next: 14, pick: (r) => ({ sound: 'thump', gain: 0.35, rate: r.range(0.85, 1.0) }) },
     { zone: 'residential', min: 10, max: 26, next: 6, pick: (r) => ({ sound: r.chance(0.55) ? 'thump' : 'pipe', gain: 0.3, rate: r.range(1.0, 1.4), lowpass: 1400 }) },
     { zone: 'construction', min: 7, max: 16, next: 4, pick: (r) => ({ sound: r.chance(0.6) ? 'clank' : 'rattle', gain: 0.32, rate: r.range(0.85, 1.2) }) },
     { zone: 'station', min: 45, max: 85, next: 12, pick: () => ({ sound: 'train', gain: 0.55, rate: 1 }) },
+    // Far off and muffled; comes and goes, never a GPS beacon.
+    { zone: 'railFar', min: 60, max: 110, next: 25, pick: (r) => ({ sound: 'train', gain: 0.22, rate: r.range(0.92, 1.0), lowpass: 700 }) },
     { zone: 'station', min: 70, max: 130, next: 30, pick: () => ({ sound: 'announce', gain: 0.4, rate: 1, lowpass: 1800 }) },
   ]
 
@@ -129,7 +137,7 @@ class AmbientAudio {
   }
 
   private sync() {
-    const want = session.getStatus() === 'playing' && !document.hidden && document.hasFocus()
+    const want = session.getStatus() === 'PLAYING' && !document.hidden && document.hasFocus()
     if (want && !this.ctx) this.unlock()
     this.setRunning(want)
   }
@@ -159,21 +167,31 @@ class AmbientAudio {
     if (this.applyIn > 0) return
     this.applyIn = APPLY_INTERVAL
 
-    const levels = { trunk: trunkLevel(x, z), vehicle: this.vehicle } as Levels
-    for (const name of Object.keys(ZONES) as ZoneName[]) levels[name] = zoneLevel(ZONES[name], x, z)
+    // Inside the restaurant the street is muffled and the café is all around.
+    // On the rooftop the same street is further away: softer, birds unchanged.
+    const place = session.getSnapshot().place
+    const indoor = place === 'COUNTER' || place === 'TABLE' ? 1 : 0
+    const above = place === 'ROOF' || place === 'ROOF_SEAT' ? 1 : 0
+    const levels = { trunk: trunkLevel(x, z) * (1 - 0.5 * indoor) * (1 - 0.4 * above), vehicle: (this.vehicle + this.windowVehicle) * (1 - 0.7 * above), indoor, above } as Levels
+    for (const name of Object.keys(ZONES) as ZoneName[]) levels[name] = zoneLevel(ZONES[name], x, z) * (indoor && name !== 'restaurant' ? 0.4 : 1) * (above ? 0.5 : 1)
+    if (indoor) levels.restaurant = 1
 
     for (const b of this.beds) this.driveBed(b, b.level(levels))
 
     for (const s of this.shots) {
       if (this.clock < s.next) continue
-      const level = s.zone ? levels[s.zone] : 1
+      const level = (s.zone ? levels[s.zone] : 1) * (indoor && !s.zone ? 0.4 : 1)
+      if (s.indoorOnly && !indoor) {
+        s.next = this.clock + 3
+        continue
+      }
       if (level < 0.06 || this.active >= MAX_ONE_SHOTS) {
         s.next = this.clock + 1.5
         continue
       }
-      s.next = this.clock + this.rng.range(s.min, s.max)
+      s.next = this.clock + this.rng.range(s.min, s.max) * (indoor && s.zone === 'restaurant' ? 1.8 : 1)
       const p = s.pick(this.rng)
-      this.play(p.sound, p.gain * level, p.rate, p.lowpass, this.rng.range(-0.6, 0.6))
+      this.play(p.sound, p.gain * level * (indoor && s.zone === 'restaurant' && !s.indoorOnly ? 0.6 : 1), p.rate, p.lowpass, this.rng.range(-0.6, 0.6))
     }
   }
 
@@ -251,6 +269,11 @@ class AmbientAudio {
   /** A scripted event sound (ambience channel) heard from `distance` metres away. */
   playAt(sound: SoundName, distance: number, radius: number, gain: number, rate = 1, lowpass?: number) {
     this.play(sound, gain * attenuate(distance, radius), rate, lowpass, 0)
+  }
+
+  /** Loudness of a car passing outside the restaurant window (0 when there is none). */
+  setWindowVehicle(level: number) {
+    this.windowVehicle = level
   }
 
   /** Engine loudness for the passing delivery vehicle (0 when there is none). */

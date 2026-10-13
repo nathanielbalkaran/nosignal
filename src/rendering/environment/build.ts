@@ -9,6 +9,7 @@ import { windowLog } from '../facade/windowLog.ts'
 import { Layers } from '../geo/layers.ts'
 import { signAtlas } from '../geo/textures.ts'
 import { buildProp } from '../props/index.ts'
+import { buildDiscovery } from '../discoveries/street.ts'
 
 export interface EnvironmentBuild {
   layers: Layers
@@ -25,6 +26,7 @@ export function buildEnvironment(world: World): EnvironmentBuild {
   buildMasses(layers, world, world.facades)
   for (const spec of world.facades) buildFacade(layers, atlas, spec, lights)
   for (const p of world.props) buildProp(layers, p)
+  for (const d of world.discoveries) buildDiscovery(layers, d)
   buildStation(layers, atlas, world)
   buildRailings(layers, world)
   buildDeadEnds(layers, atlas, world)

@@ -73,6 +73,23 @@ export const TRANSIT_LABELS = [
   { zh: '的士站', en: 'TAXI' },
 ] as const
 
+/** "To Hoi Pong Station" (往 = towards). An arrow is appended to the Chinese line. */
+export const DIRECTION_LABEL = { zh: '往海旁站', en: 'TO HOI PONG STATION' }
+
+/**
+ * The few directional station signs, each on one street segment (`from` to `to`) a little way in from
+ * `from`. The arrow points along the street towards `to`. They sit on routes, not on every junction, and
+ * thicken only near the trunk road: one on the market's south approach, one at the market's end, one on
+ * Wing On Lane, one leaving the corner building's junction and one on the east road.
+ */
+export const WAYFINDING: readonly { street: string; from: string; to: string; reach: number }[] = [
+  { street: 'kam-fung-south', from: 'K3', to: 'K2', reach: 7 },
+  { street: 'kam-fung-market', from: 'K1', to: 'T2', reach: 9 },
+  { street: 'wing-on-lane', from: 'J2', to: 'T3', reach: 8 },
+  { street: 'chung-wo-street', from: 'J4', to: 'T4', reach: 12 },
+  { street: 'ching-wan-road', from: 'M5', to: 'T5', reach: 9 },
+]
+
 /** Category order for shop mixes by zone. */
 export const CATEGORY_WEIGHTS: Readonly<Record<string, readonly (readonly [ShopCategory, number])[]>> = {
   commercial: [['food', 3], ['retail', 3], ['service', 2], ['medical', 1.2], ['trade', 1]],

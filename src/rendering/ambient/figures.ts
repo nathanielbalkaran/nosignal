@@ -9,7 +9,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
  * silhouette, clothes and gait.
  */
 
-export type Archetype = 'commuter' | 'courier' | 'elder'
+export type Archetype = 'commuter' | 'courier' | 'elder' | 'worker'
 
 interface Spec {
   /** Overall height scale. */
@@ -29,6 +29,10 @@ interface Spec {
   bag?: 'shoulder' | 'pack'
   stripe?: string
   shortSleeves?: boolean
+  /** A bib apron over the shirt and trousers. */
+  apron?: string
+  /** Hair across the forehead, for figures seen from the front. */
+  fringe?: boolean
   /** Forward lean of the upper body, radians. */
   lean: number
   /** Leg swing amplitude, radians. */
@@ -40,6 +44,7 @@ interface Spec {
 const SPECS: Record<Archetype, Spec> = {
   commuter: { height: 1, build: 1, top: '#3a4352', trousers: '#25282d', shoes: '#16161a', skin: '#a98468', hair: '#17140f', bag: 'shoulder', lean: 0.05, swing: 0.4, stride: 0.5 },
   courier: { height: 1.02, build: 1.08, top: '#5d6650', trousers: '#4a4638', shoes: '#2b2a26', skin: '#9a7658', hair: '#17140f', cap: '#2f4a52', bag: 'pack', stripe: '#a9783a', shortSleeves: true, lean: 0.1, swing: 0.44, stride: 0.5 },
+  worker: { height: 1.02, build: 1.02, top: '#cfcbbd', trousers: '#2d2f33', shoes: '#1a1a1c', skin: '#a98468', hair: '#15120e', apron: '#3f4d46', fringe: true, shortSleeves: true, lean: 0.02, swing: 0.3, stride: 0.45 },
   elder: { height: 0.93, build: 0.94, top: '#6a5f4f', coat: '#7a6f5c', trousers: '#3a3c40', shoes: '#242220', skin: '#b08e72', hair: '#aaa8a2', lean: 0.2, swing: 0.28, stride: 0.42 },
 }
 
@@ -111,6 +116,19 @@ function geometries(kind: Archetype) {
     t.add(new SphereGeometry(0.108, 8, 4, 0, Math.PI * 2, 0, 1.45), s.cap, 0, base + 1.66, 0, 0.9, 1, 1.02)
     t.add(new BoxGeometry(0.16, 0.012, 0.09), s.cap, 0, base + 1.685, 0.12)
   }
+  if (s.apron) {
+    // Bib over the chest, waist apron over the hips, straps round the neck and tied at the back.
+    t.add(new BoxGeometry(0.27 * s.build, 0.44, 0.03), s.apron, 0, base + 1.07, 0.112 * s.build, 1, 1, 1, -0.06)
+    t.add(new BoxGeometry(0.36 * s.build, 0.5, 0.035), s.apron, 0, base + 0.7, 0.118 * s.build)
+    t.add(new BoxGeometry(0.03, 0.2, 0.02), s.apron, -0.085, base + 1.4, 0.085)
+    t.add(new BoxGeometry(0.03, 0.2, 0.02), s.apron, 0.085, base + 1.4, 0.085)
+    t.add(new BoxGeometry(0.34 * s.build, 0.035, 0.12 * s.build), '#262e2a', 0, base + 0.99, 0.0, 1.1, 1, 1.0) // waist tie
+  }
+  if (s.fringe) {
+    t.add(new BoxGeometry(0.17, 0.035, 0.07), s.hair, 0, base + 1.715, 0.065)
+    t.add(new BoxGeometry(0.03, 0.06, 0.06), s.hair, -0.088, base + 1.68, 0.03)
+    t.add(new BoxGeometry(0.03, 0.06, 0.06), s.hair, 0.088, base + 1.68, 0.03)
+  }
   if (s.bag === 'shoulder') {
     t.add(new BoxGeometry(0.07, 0.2, 0.28), '#2a2b2e', 0.25 * s.build, base + 0.93, 0)
     t.add(cyl(0.012, 0.012, 0.55, 4), '#2a2b2e', 0.1 * s.build, base + 1.2, 0, 1, 1, 1, 0.0)
@@ -141,6 +159,12 @@ export interface Figure {
   /** Place and turn this; it holds the scaled body. */
   /** Pose the figure for a distance walked, at a given speed. */
   pose(distance: number, speed: number): void
+  /** The joints, for a figure that stands in place and is posed by hand. */
+  rig: {
+    body: Group
+    armL: { joint: Group; knee: Group }
+    armR: { joint: Group; knee: Group }
+  }
 }
 
 export function makeFigure(kind: Archetype, seed: number): Figure {
@@ -182,6 +206,7 @@ export function makeFigure(kind: Archetype, seed: number): Figure {
 
   return {
     group: root,
+    rig: { body, armL, armR },
     pose(distance, speed) {
       const step = Math.max(0.3, speed * s.stride)
       const phase = (distance / step) * Math.PI

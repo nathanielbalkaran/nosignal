@@ -32,7 +32,7 @@ export function AmbientLife() {
   )
 
   useFrame((_, rawDt) => {
-    if (!FORCE_LIVE && session.getStatus() !== 'playing') return
+    if (!FORCE_LIVE && session.getStatus() !== 'PLAYING') return
     const dt = Math.min(rawDt, 0.1)
     time.current += dt
     for (const p of parts) p.update(time.current, dt, playerState)

@@ -431,3 +431,80 @@ Not seen in a browser (the embedded one cannot reach the dev server). Needs a lo
 - Ambient: `AMBIENT_INTENSITY` scales the hemisphere and fill lights (hemisphere 6.4 to 5.3, fill 1.5 to 1.2, darker ground bounce).
 - Additive light decals (streetlight and shop pools) now fade with distance instead of ignoring fog; skyline towers have the haze baked in (`SKYLINE_HAZE`); streetlight pool strength is `LAMP_POOL_STRENGTH`.
 - Fog does not make rendering cheaper; no performance change is claimed.
+
+## Phase 3A — Core gameplay loop (awaiting review)
+
+Title screen, Play (timed) and Explore (untimed) modes, pause menu, win and loss. Same scene for every state; no world, audio-generation or renderer changes.
+
+- **State** (`game/session.ts`): `TITLE | PLAYING | PAUSED | WON | LOST` plus mode `PLAY | EXPLORE`, one small external store (`useGame()`). Entering or resuming play requests pointer lock and becomes PLAYING only when granted; a denied request leaves the menu up with a "click again" hint. `pause()` is idempotent, so Esc key + `pointerlockchange` cannot double-fire. Held keys are cleared whenever state leaves PLAYING. `attachSession()` (called once in `App`) owns the window listeners.
+- **Clock** (`game/clock.ts`): accumulates `performance.now()` only while PLAYING in Play mode, tab visible and window focused. One `setTimeout` schedules the two-minute warning, then the 05:21:00 deadline. Start 05:12:00, limit 9 min, both constants in that file.
+- **Start**: the existing spawn (Tak On Street / Lok Wo Lane corner, facing NE). Checked: 54 m of open walking straight ahead, a street, a lane and an alley meet there, station not visible (`check:world`). `resetPlayer()` restores position, facing and pitch.
+- **Station** (`world/goal.ts`, `enterableEntrance`): within 7 m of the doorway, on the street side of the wall, inside the pocket width, at street level, looking within 40° of the door. Prompt via `StationInteraction`; E re-checks at press time. Explore shows "STATION ENTRANCE" only. Covered by a test in `test-movement.ts`.
+- **UI** (`ui/`): `TitleScreen`, `PauseMenu` (reuses `MusicSelector`, `AudioSliders`), `EndScreen`, `Hud` (T wristwatch for 3 s, one "02:00 REMAINING" warning, entrance prompt).
+- **Audio**: music no longer auto-starts or starts on any gesture; it plays only while PLAYING, pauses on pause, fades on win/loss, and is unlocked by the Play/Explore/Resume click. Added a music mute (`mixer.setMusicMuted`, persisted). Each run remounts only `AmbientLife` (via `runId`) so one-shot events replay.
+- **Dev** (dev builds only): F6 reset player, F7 reset clock, F8 freeze clock, F9 set 30 s remaining; the HUD shows mode, state and clock; `window.__game` exposes the store and clock. `?nolock` skips pointer lock so automation can play.
+
+Not done: a sound-effects slider (the game has no SFX; all one-shots belong to the Ambience channel).
+
+## Phase 3B — Navigation design (awaiting review)
+
+No new streets, geometry, collision, timer or speed changes. `npm run nav:audit` (`scripts/nav-audit.ts`) prints start and entrance coordinates, route lengths and times at 5.5 m/s, and station visibility from the spawn and the footbridge.
+
+**Audit (measured).** Start (-96, 52); entrances ST (80, -109) and STW (2, -104.5), 239 m and 185 m in a straight line. Street-graph lengths: shortest 218 m (40 s); market and footbridge 234 m (42 s); backstreets 235 m (43 s); Shun Hing Street 319 m (58 s); the market route with two deliberate wrong turns 483 m (88 s). Ground-only A* with real collision (stairs solid, so no bridge): 233 m to STW, 283 m to ST. Real walking adds a few percent. The lost-walker simulation (not a playtest) gives a 90th percentile of 5.7 min. A player who knows the way has about 8 of 9 minutes spare, so the challenge comes from finding the way, not the clock; the timer was not touched. All three routes were already distinct and overlap little; nothing was changed.
+
+**Clues.** Five directional plates (`WAYFINDING` in `world/signage.ts`, placed in `props.ts`, drawn by `facade/fixtures.ts`): 往海旁站 / TO HOI PONG STATION with an arrow along the street, in the existing blue transit plate palette. They are on Kam Fung Street south of the market, the market's north end, Wing On Lane, Chung Wo Street and Ching Wan Road. Left or right is worked out from the wall the plate is on. None are near the start, and the backstreet and main routes get only one each. The station name is the existing 海旁站 HOI PONG STATION; the entrance board, the existing 鐵路 plates by the trunk road and the pocket plates are unchanged. Check `Every directional station sign found a wall` in `check:world`.
+
+**Audio.** New wide, faint `railFar` zone (120 m around the entrances): the rail bed gets a floor of 0.035 and a muffled, quiet distant train now and then. Both go through the Ambience bus, so the slider and mute apply, and the music level is untouched. Nothing is directional.
+
+**Bridge.** Unchanged. Measured: the station sign band is visible from 1 of 32 sample points on the deck and stairs (the south stair head, 60 m away, deep in fog), so the bridge does not reveal the entrance.
+
+**Landmarks.** The corner tower (teal, ribbon windows, 40 m), the lit red restaurant, the market and the green footbridge sign were left as they are; no new landmark objects.
+
+**Dev.** The dev HUD now shows start and entrance coordinates and the straight-line distance to the nearest entrance. The dev map already draws the three routes; F6 resets to the start.
+
+**Needs manual playtesting.** Whether the plates are readable at 360p (they are 1.9 m wide and sit at 2.9 m; check the arrow glyph in the CJK font used), their arrow direction on each street, whether they sit clear of awnings in the market, how loud the far train is, bridge views at dawn light, and whether the clues make the route too easy. The embedded browser cannot reach the dev server, so none of this has been seen.
+
+## Phase 3C — Restaurant interaction & tea break
+
+Enter the 茶餐廳 from its street door (`[E] ENTER 茶餐廳`, within 4 m, facing it). No new dependencies or assets.
+
+- **State** (`game/session.ts`): `state` stays PLAYING inside, so the clock, music and ambience carry on and pause/blur/hidden-tab still stop them. New fields: `place` (logical), `view` (rendered, switched at the black moment of a 420 ms fade), `fading`, `hasReceipt`, `receiptOpen`, `deferredLoss`. Pointer lock is released on entry; the street pose is saved and restored with the lock on exit. Esc works in every scene; Resume restores the scene; Restart/Title reset receipt, dialogue and place.
+- **Time**: if the deadline passes inside, nothing interrupts; the loss is applied on exit (`deferredLoss`). The station entrance is blocked unless on the street, so a win after departure is impossible. Explore has no deadline.
+- **Interior** (`rendering/restaurant/`): one compact room at world offset (1000, 0, 1000), drawn only while inside (outdoor scene hidden with `visible`, own lights). Counter and table are fixed camera shots; a worker (`figures.ts` `'worker'` archetype), steam sprites, and a window lane with an occasional car and passer-by. No physics, AI or crowds.
+- **Dialogue** (`game/restaurant.ts`): scripted, advances by frame dt (freezes on pause). Directions take about 20 s and can be skipped with Space/click.
+- **Receipt** (`ui/receiptArt.ts`): Canvas 2D, built from the real A* walkable route (`world/restaurant.ts`): real turn angles, compressed leg lengths, three landmarks taken from the world (roadworks, tall tower, crossing). No map, route highlight or GPS. R toggles it; it stays after leaving.
+- **Audio** (`audio/ambient.ts`): `indoor` level lowers traffic/vent, forces the restaurant zone, adds quiet dish clinks and window vehicle passes. All via the Ambience bus; music untouched.
+
+**Checked in the embedded browser** (screenshots viewed): the door prompt, counter scene, directions exchange, receipt overlay, tea scene, exit restoring position and facing, Esc/resume inside the counter, and the deferred loss on exit. `npm run validate` passes and the production bundle has no `__game`.
+
+**Not checked**: Explore mode inside, pause from the receipt and tea views, audio levels (heard by no one), the window-lane car and passer-by at the tea table, and 360p readability of the receipt text on a real display. The R key arrived inconsistently via the browser-automation key tool, though a direct keydown dispatch toggled correctly. The window blinds hide most of the street at the table.
+
+## Phase 3D — Optional discoveries (awaiting review)
+
+Five optional things to find. None of them is advertised, counted, rewarded or needed to reach the station. No new dependencies, assets, streets, buildings or collision rules.
+
+- **Placement** (`world/discoveries.ts`): deterministic, run after props and facades in `buildWorld` (`world.discoveries`). Each kind has a street and preferred ground-floor facades. A candidate is rejected if it overlaps blocks, obstacles, props, corridors or keep-outs, or if the player can't stand in front of it. Solid objects add a `prop` obstacle. The stairwell door has no collider. `nearbyDiscovery` returns the nearest one in reach, on the street side and facing it; the station and restaurant prompts take priority (`StationInteraction`).
+  - Cat: Kam Yuen Alley, facade F8.5, on a utility box.
+  - Vending machine: Shun Hing Street, F3.6, against the closed herbal-medicine shutter.
+  - Payphone: Shun Hing Street west end, OUTER.11, on the closed stationery shutter.
+  - Rooftop door: Tung Lok Street, F18.5, a steel door beside a grilled window.
+  - Arcade cabinet: Kam Fung Street south, F6.4, in the half-shuttered recess under the 手機 sign.
+- **State**: `game/discoveries.ts` holds the timed state (cat pat, vending choose/dispense, phone up/down and message). It advances by frame dt, so it freezes on pause. `session.ts` gained the places `VENDING | PHONE | ROOF | ROOF_SEAT | ARCADE` and `enterScene` / `leaveScene` / `setPlace`. These reuse the restaurant's fade, saved pose, lock release and `deferredLoss`, so the clock runs on, pause/blur/hidden tab still stop it, and a deadline passed inside is applied on return to the street. Restart and Title call `resetSceneState()`.
+- **Cat** (first person): street geometry baked into the environment. While petted, a live procedural cat (`Cat.tsx`) replaces it for 6.5 s: the head turns up, the tail sweeps and the body leans, with a small chirp and a one-line note.
+- **Vending / payphone** (`scenes.tsx`): close-ups built once at (1000, 0, 1060), visible only while open. Vending: 1/2/3 picks milk tea, lemon tea or soy milk, then the button press, a rattle and thunk, and the can drops into the slot (~5 s). Phone: E lifts the receiver, giving a dial tone and then one of three rotating messages, shown as subtitles over simple tones: a disconnected number, a service announcement, or indistinct voices then a click. No speech is synthesised. H hangs up, Q steps back.
+- **Rooftop** (`rooftop.ts`, `RooftopScene.tsx`): a compact roof at (1000, 0, 1120) with tiles, parapets, a stair-head, water tanks, pipes, an antenna and dish, a plastic chair, a crate table, pots, a clothes horse and an air-con unit. Around it are generic neighbour blocks with a few warm windows and far silhouettes. No streets or station are visible. There are two fixed shots: standing by the door (E sit, Q exit) and seated looking out ("SOMEWHERE ABOVE THE CITY." fades after a few seconds, E stand). Music continues. A quiet vent gust plays every 25–55 s.
+- **Arcade** (`ui/ArcadeGame.tsx`): LAST STOP on one 160×200 canvas, scaled up pixelated. A/D or arrows dodge falling debris; the score is whole seconds survived; the run clears at 40 s. On a loss it shows GAME OVER with R retry / Q exit. Held keys are cleared on blur and on exit, and the game loop stops when not PLAYING.
+- **Audio** (`audio/interact.ts`): one-shots reuse the existing synthesised sounds through the Ambience bus. No new audio engine. Music is never touched.
+
+**Checked in the embedded browser** (screenshots viewed, `?nolock`): all five prompts from in front, and none from far away or behind. The cat in its alley, the vending machine, payphone, door and cabinet on the street. Vending selection and the can dropping into the slot. Phone lift with the "not in service" message. Rooftop standing shot, seated shot and caption, and exit. Arcade play, GAME OVER, retry, exit, and walking afterwards. Esc pause and resume inside the arcade. In Play mode, the deadline passing during the phone call set `deferredLoss` and showed TRAIN DEPARTED only after stepping back. `npm run validate` passes and the production bundle has no `__game`.
+
+**Audit fixes** (second pass):
+- The cat was baked into the street and also drawn live, so two cats overlapped while it was petted. Now only the box is baked, and the live cat is always shown, breathing at rest.
+- E is ignored while the cat reacts, and the prompt hides meanwhile. The meow now plays on every pat, not just the first.
+- The restaurant rig and the ambience mix treated every non-street place as "inside the restaurant". That rendered the café room and played dish and window-car sounds during the vending, phone, roof and arcade scenes. Both now check for `COUNTER | TABLE` only. Vending, phone and arcade keep the street mix at the player's spot; the rooftop gets a softer, more distant mix of the street below, with birds unchanged.
+- R no longer opens the receipt inside discovery scenes, where it clashed with arcade retry.
+- Taking the can lifts it toward the camera during the fade out.
+
+Seen after the fixes: one cat on its box, mid-pat with its head turned up and the prompt hidden, frozen by pause.
+
+**Not checked**: every sound (heard by no one; check levels against the music), the announcement and chatter phone messages, Explore mode inside the scenes, pointer-lock re-acquire after leaving each scene on a real browser (automation uses `?nolock`), and 360p readability of the panels.

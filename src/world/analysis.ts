@@ -103,24 +103,24 @@ function entry(a: Vec2, b: Vec2, poly: readonly Vec2[]): number | null {
 }
 
 /** Can an eye-level viewer at `from` see a point `height` metres up at `to`? Buildings block by height. */
-function canSee(from: Vec2, to: Vec2, height: number, prisms: readonly Prism[]): boolean {
+function canSee(from: Vec2, to: Vec2, height: number, prisms: readonly Prism[], eye = EYE): boolean {
   for (const p of prisms) {
     const t = entry(from, to, p.footprint)
     if (t === null || t >= 0.999) continue
-    const rayHeight = EYE + (height - EYE) * t
+    const rayHeight = eye + (height - eye) * t
     if (p.base + p.height > rayHeight) return false
   }
   return true
 }
 
 /** Whether the station's sign band can be seen from `from`. */
-export function stationVisibleFrom(world: World, from: Vec2): boolean {
+export function stationVisibleFrom(world: World, from: Vec2, eye = EYE): boolean {
   const prisms = world.prisms.filter((p) => p.kind !== 'station')
   return world.station.entrances.some(({ facade, at, outward }) => {
     const along = normalize(sub(facade[1], facade[0]))
     return [-5, 0, 5].some((k) => {
       const target: Vec2 = [at[0] + along[0] * k + outward[0] * 0.3, at[1] + along[1] * k + outward[1] * 0.3]
-      return canSee(from, target, SIGN_HEIGHT, prisms)
+      return canSee(from, target, SIGN_HEIGHT, prisms, eye)
     })
   })
 }

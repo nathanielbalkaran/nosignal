@@ -32,11 +32,32 @@ function load(): Volumes {
 }
 
 let volumes: Volumes = load()
+const MUTE_KEY = 'nosignal.musicMuted'
+let musicMuted = (() => {
+  try {
+    return window.localStorage.getItem(MUTE_KEY) === '1'
+  } catch {
+    return false
+  }
+})()
 const listeners = new Set<() => void>()
 
 export const mixer = {
   getVolumes: (): Volumes => volumes,
   get: (ch: Channel): number => volumes[ch],
+  /** The volume sources should use: the slider, or 0 while music is muted. */
+  effective: (ch: Channel): number => (ch === 'music' && musicMuted ? 0 : volumes[ch]),
+  isMusicMuted: (): boolean => musicMuted,
+  setMusicMuted(muted: boolean) {
+    if (muted === musicMuted) return
+    musicMuted = muted
+    try {
+      window.localStorage.setItem(MUTE_KEY, muted ? '1' : '0')
+    } catch {
+      // Ignore: the setting just won't persist.
+    }
+    for (const l of listeners) l()
+  },
   subscribe(l: () => void) {
     listeners.add(l)
     return () => {

@@ -22,6 +22,7 @@ import {
 } from './geometry2d.ts'
 import { deriveFaces } from './faces.ts'
 import { buildFacadeSpecs, type FacadeSpec } from './facades.ts'
+import { placeDiscoveries, type Discovery } from './discoveries.ts'
 import { placeProps, type Cable, type Corridor, type PlacementReport, type PropInstance, type StreetPlate } from './props.ts'
 import type {
   DeadEnd,
@@ -214,6 +215,8 @@ export interface World {
   placement: PlacementReport
   /** Facade decisions for every building front, plus the landmark buildings. */
   facades: FacadeSpec[]
+  /** The five optional discoveries (cat, vending machine, payphone, stairwell, arcade), placed after everything else. */
+  discoveries: Discovery[]
 }
 
 const STOREY = 3
@@ -520,10 +523,12 @@ export function buildWorld(layout: DistrictLayout): World {
     keepouts: [],
     placement: { attempts: 0, rejected: 0, rejectedBy: {}, byType: {}, occluders: 0 },
     facades: [],
+    discoveries: [],
   }
 
   placeProps(world)
   world.facades = buildFacadeSpecs(world)
+  world.discoveries = placeDiscoveries(world)
   return world
 }
 

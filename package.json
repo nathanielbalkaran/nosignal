@@ -9,6 +9,7 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "check:world": "node scripts/check-world.ts",
+    "nav:audit": "node scripts/nav-audit.ts",
     "test:movement": "node scripts/test-movement.ts",
     "validate": "npm run build && npm run lint && npm run check:world && npm run test:movement",
     "preview": "vite preview"

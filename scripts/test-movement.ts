@@ -20,9 +20,17 @@ import {
   sub,
   type Vec2,
 } from '../src/world/geometry2d.ts'
+import { enterableEntrance } from '../src/world/goal.ts'
 import { atStation } from '../src/world/goal.ts'
 import { DISTRICT } from '../src/world/layout.ts'
 import { buildWalkGrid, findPath } from '../src/world/reachability.ts'
+
+interface EntranceViewCase {
+  x: number
+  z: number
+  y: number
+  yaw: number
+}
 
 const world = buildWorld(DISTRICT)
 /** The same district without props, for tests that measure the walker rather than the clutter. */
@@ -385,6 +393,33 @@ function randomWalk(seed: string, start: Vec2, y: number, steps: number) {
     'Random walk uses the stairs',
     `footbridge walk ranged from ${bridge.minY.toFixed(2)} m to ${bridge.maxY.toFixed(2)} m`,
   )
+}
+
+{
+  // Station entrance prompt: only at the doorway, facing it, from the street side.
+  const goodFront: boolean[] = []
+  const cases: string[] = []
+  for (const [i, e] of world.station.entrances.entries()) {
+    const toDoor = (d: number, side = 0): EntranceViewCase => {
+      const x = e.at[0] + e.outward[0] * d + -e.outward[1] * side
+      const z = e.at[1] + e.outward[1] * d + e.outward[0] * side
+      return { x, z, y: 0, yaw: Math.atan2(e.outward[0], e.outward[1]) }
+    }
+    const checks: [string, boolean][] = [
+      ['3 m, facing', enterableEntrance(world, toDoor(3)) === i],
+      ['6 m, facing', enterableEntrance(world, toDoor(6)) === i],
+      ['10 m (too far)', enterableEntrance(world, toDoor(10)) === null],
+      ['facing away', enterableEntrance(world, { ...toDoor(3), yaw: toDoor(3).yaw + Math.PI }) === null],
+      ['behind the wall', enterableEntrance(world, toDoor(-2)) === null],
+      ['on the footbridge deck', enterableEntrance(world, { ...toDoor(3), y: 6 }) === null],
+      ['beside the pocket', enterableEntrance(world, toDoor(3, 9)) === null],
+    ]
+    for (const [name, ok] of checks) {
+      goodFront.push(ok)
+      if (!ok) cases.push(`${e.node}: ${name}`)
+    }
+  }
+  report(goodFront.every(Boolean), 'Station prompt only at the doorway, facing it', cases.length ? `failed: ${cases.join('; ')}` : 'both entrances, 7 cases each')
 }
 
 console.log(failures ? `\n${failures} movement test(s) failed` : '\nAll movement tests passed')

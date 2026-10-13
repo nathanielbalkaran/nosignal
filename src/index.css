@@ -1,3 +1,24 @@
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url('/fonts/pixelify-sans-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url('/fonts/pixelify-sans-latin-600-normal.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'VT323';
+  src: url('/fonts/vt323-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {
@@ -13,10 +34,48 @@ body,
   overflow: hidden;
   background: #1a1820;
   color: #e8e4dc;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: 'Pixelify Sans', ui-monospace, monospace;
 }
 
 canvas {
   display: block;
   image-rendering: pixelated;
+}
+
+@keyframes ns-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ns-fade-in {
+  animation: ns-fade-in 0.9s ease-out both;
+}
+
+/* Ending: the scene goes to black first, then the text arrives. */
+.ns-fade-black {
+  animation: ns-fade-in 1.6s ease-in both;
+}
+
+.ns-fade-late {
+  animation: ns-fade-in 1.2s ease-out 1.5s both;
+}
+
+.ns-btn {
+  background: transparent;
+  border: 1px solid rgba(232, 228, 220, 0.35);
+  color: #e8e4dc;
+  font: inherit;
+  font-size: 16px;
+  letter-spacing: 0.2em;
+  padding: 10px 28px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.ns-btn:hover,
+.ns-btn:focus-visible {
+  background: rgba(232, 228, 220, 0.12);
+  border-color: rgba(232, 228, 220, 0.8);
+  color: #fff;
+  outline: none;
 }

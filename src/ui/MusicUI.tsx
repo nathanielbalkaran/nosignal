@@ -1,3 +1,4 @@
+import { type } from './typography.ts'
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { music } from '../audio/music/player.ts'
 import { ARTIST, NOTICE_SECONDS, TRACKS } from '../audio/music/tracks.ts'
@@ -11,10 +12,8 @@ const box: CSSProperties = {
   padding: '6px 10px 7px',
   background: 'rgba(14, 13, 20, 0.72)',
   border: '1px solid rgba(232, 228, 220, 0.22)',
-  fontFamily: '"Courier New", ui-monospace, monospace',
-  fontSize: 12,
-  lineHeight: 1.35,
-  letterSpacing: '0.04em',
+  ...type.readoutSmall,
+  lineHeight: 1.2,
   color: '#e8e4dc',
   pointerEvents: 'none',
   userSelect: 'none',
@@ -22,7 +21,7 @@ const box: CSSProperties = {
   zIndex: 5,
 }
 
-const station: CSSProperties = { fontSize: 10, letterSpacing: '0.2em', opacity: 0.6, marginBottom: 3 }
+const station: CSSProperties = { letterSpacing: '0.2em', opacity: 0.65, marginBottom: 2 }
 const count: CSSProperties = { opacity: 0.6, marginTop: 3 }
 
 function isTyping(target: EventTarget | null): boolean {

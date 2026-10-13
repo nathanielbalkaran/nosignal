@@ -16,6 +16,7 @@ import {
   type Vec2,
 } from './geometry2d.ts'
 import { Rng, valueNoise } from './rng.ts'
+import { WAYFINDING } from './signage.ts'
 import type { LayoutStreet } from './types.ts'
 import { CONSTRUCTION_STREET, characterOf, zoneOf, type Zone } from './zones.ts'
 
@@ -169,9 +170,11 @@ export interface StreetPlate {
   /** Unit vector from the wall into the street. */
   outward: Vec2
   height: number
-  kind: 'street' | 'transit'
+  kind: 'street' | 'transit' | 'direction'
   /** Street id, or the index into TRANSIT_LABELS. */
   ref: string
+  /** For 'direction' plates: which way the arrow points as seen from the street. */
+  arrow?: 'left' | 'right'
 }
 
 /** A cable bundle between two facades. */
@@ -985,6 +988,31 @@ export function placeProps(world: World): void {
           kind: 'street',
           ref: seg.street.id,
         })
+      }
+    }
+    // Directional station signs (signage.ts: WAYFINDING): arrow along the street towards the trunk road.
+    for (const w of WAYFINDING) {
+      const seg = segs.find((q) => q.street.id === w.street && ((q.nodeA === w.from && q.nodeB === w.to) || (q.nodeA === w.to && q.nodeB === w.from)))
+      if (!seg) continue
+      const forward = seg.nodeA === w.from
+      const heading = forward ? seg.dir : scale(seg.dir, -1)
+      const start = forward ? seg.a : seg.b
+      const origin = add(start, scale(heading, w.reach))
+      for (const side of [1, -1]) {
+        const hit = wallHit(origin, scale(seg.n, side), seg.street.width / 2 + 2.5)
+        if (!hit) continue
+        const outward = scale(seg.n, -side)
+        // The viewer faces into the wall, so their right is (outward.z, -outward.x).
+        const right: Vec2 = [outward[1], -outward[0]]
+        plates.push({
+          at: add(origin, scale(seg.n, side * (hit.t - 0.02))),
+          outward,
+          height: 2.9,
+          kind: 'direction',
+          ref: w.street,
+          arrow: heading[0] * right[0] + heading[1] * right[1] > 0 ? 'right' : 'left',
+        })
+        break
       }
     }
     // A few small transit hints right beside the trunk road, never along the district.

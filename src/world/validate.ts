@@ -1,7 +1,7 @@
 import { PLAYER } from '../config/player.ts'
 import type { World } from './build.ts'
 import { STEP_HEIGHT } from './collision.ts'
-import { SHOP_LABELS } from './signage.ts'
+import { SHOP_LABELS, WAYFINDING } from './signage.ts'
 import { decisionsAlong, samplePoints, sightlines, stationVisibility, stationVisibleFrom } from './analysis.ts'
 import { distance, lerp, pointInPolygon, segmentHitsPolygon, segmentsIntersect, signedArea, type Vec2 } from './geometry2d.ts'
 import { degree, diverseRoutes, edgeDisjointRouteCount, loopCount, mergeNodes, shortestRoute, type Route } from './navigation.ts'
@@ -270,6 +270,9 @@ function checkEnvironment(world: World, routes: Route[], check: (label: string, 
     return signs.some((s) => typeof s.label === 'number' && (s.label < 0 || s.label >= SHOP_LABELS.length))
   })
   check('Every sign uses a curated label', bad.length === 0, `${world.facades.length} facades, ${world.plates.length} plates`)
+
+  const signs = world.plates.filter((p) => p.kind === 'direction')
+  check('Every directional station sign found a wall', signs.length === WAYFINDING.length, `${signs.length}/${WAYFINDING.length}: ${signs.map((p) => `${p.ref} ${p.arrow}`).join(', ')}`)
 
   const r = world.placement
   const solid = world.props.filter((p) => p.colliders.length > 0).length

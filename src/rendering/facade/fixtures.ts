@@ -1,5 +1,5 @@
 import type { World } from '../../world/build.ts'
-import { FOOTBRIDGE_LABEL, TRANSIT_LABELS } from '../../world/signage.ts'
+import { DIRECTION_LABEL, FOOTBRIDGE_LABEL, TRANSIT_LABELS } from '../../world/signage.ts'
 import { Sink, type Layers } from '../geo/layers.ts'
 import type { SignAtlas } from '../geo/textures.ts'
 
@@ -8,7 +8,10 @@ export function buildPlates(layers: Layers, atlas: SignAtlas, world: World) {
   for (const p of world.plates) {
     let zh: string
     let en: string
-    if (p.kind === 'street') {
+    if (p.kind === 'direction') {
+      zh = `${DIRECTION_LABEL.zh} ${p.arrow === 'left' ? '←' : '→'}`
+      en = DIRECTION_LABEL.en
+    } else if (p.kind === 'street') {
       const street = world.layout.streets.find((s) => s.id === p.ref)
       if (!street) continue
       zh = street.name.zh
@@ -19,10 +22,10 @@ export function buildPlates(layers: Layers, atlas: SignAtlas, world: World) {
       zh = t.zh
       en = t.en
     }
-    const uv = atlas.plate(zh, en, p.kind)
+    const uv = atlas.plate(zh, en, p.kind === 'street' ? 'street' : 'transit')
     const g = new Sink(layers, 'base', p.at[0], p.at[1]).signs
-    const hw = p.kind === 'street' ? 0.7 : 0.55
-    const hh = 0.17
+    const hw = p.kind === 'direction' ? 0.95 : p.kind === 'street' ? 0.7 : 0.55
+    const hh = p.kind === 'direction' ? 0.24 : 0.17
     const nx = p.outward[0]
     const nz = p.outward[1]
     const ux = nz
