@@ -11,7 +11,7 @@ export interface Zone {
   radius: number
 }
 
-export type ZoneName = 'restaurant' | 'market' | 'construction' | 'station' | 'residential'
+export type ZoneName = 'restaurant' | 'market' | 'construction' | 'station' | 'railFar' | 'residential'
 
 const node = (id: string): Vec2 => world.nodes.get(id)!.at
 const mid = (a: string, b: string): Vec2 => [(node(a)[0] + node(b)[0]) / 2, (node(a)[1] + node(b)[1]) / 2]
@@ -27,6 +27,8 @@ export const ZONES: Record<ZoneName, Zone> = {
   market: { at: [market, node('K1')], radius: 34 },
   construction: { at: [mid('C2', 'C3')], radius: 30 },
   station: { at: world.goal.entrances.map((e) => e.at), radius: 48 },
+  // Wide and faint: the trunk road side of the district can hear trains somewhere to the north. No direction is implied.
+  railFar: { at: world.goal.entrances.map((e) => e.at), radius: 120 },
   residential: { at: residentialPoints, radius: 22 },
 }
 

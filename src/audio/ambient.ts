@@ -60,7 +60,7 @@ class AmbientAudio {
     bed('hum', () => 0.09),
     bed('vent', (l) => 0.035 + 0.14 * l.residential, { rate: 0.9 }),
     bed('fan', (l) => 0.2 * l.restaurant),
-    bed('rail', (l) => 0.2 * l.station),
+    bed('rail', (l) => 0.2 * l.station + 0.035 * l.railFar),
     bed('engine', (l) => 0.5 * l.vehicle, { lowpass: 500 }),
   ]
 
@@ -73,6 +73,8 @@ class AmbientAudio {
     { zone: 'residential', min: 10, max: 26, next: 6, pick: (r) => ({ sound: r.chance(0.55) ? 'thump' : 'pipe', gain: 0.3, rate: r.range(1.0, 1.4), lowpass: 1400 }) },
     { zone: 'construction', min: 7, max: 16, next: 4, pick: (r) => ({ sound: r.chance(0.6) ? 'clank' : 'rattle', gain: 0.32, rate: r.range(0.85, 1.2) }) },
     { zone: 'station', min: 45, max: 85, next: 12, pick: () => ({ sound: 'train', gain: 0.55, rate: 1 }) },
+    // Far off and muffled; comes and goes, never a GPS beacon.
+    { zone: 'railFar', min: 60, max: 110, next: 25, pick: (r) => ({ sound: 'train', gain: 0.22, rate: r.range(0.92, 1.0), lowpass: 700 }) },
     { zone: 'station', min: 70, max: 130, next: 30, pick: () => ({ sound: 'announce', gain: 0.4, rate: 1, lowpass: 1800 }) },
   ]
 

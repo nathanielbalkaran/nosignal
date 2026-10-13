@@ -431,3 +431,21 @@ Not seen in a browser (the embedded one cannot reach the dev server). Needs a lo
 - Ambient: `AMBIENT_INTENSITY` scales the hemisphere and fill lights (hemisphere 6.4 to 5.3, fill 1.5 to 1.2, darker ground bounce).
 - Additive light decals (streetlight and shop pools) now fade with distance instead of ignoring fog; skyline towers have the haze baked in (`SKYLINE_HAZE`); streetlight pool strength is `LAMP_POOL_STRENGTH`.
 - Fog does not make rendering cheaper; no performance change is claimed.
+
+## Phase 3B — Navigation design (awaiting review)
+
+No new streets, geometry, collision, timer or speed changes. `npm run nav:audit` (`scripts/nav-audit.ts`) prints start and entrance coordinates, route lengths and times at 5.5 m/s, and station visibility from the spawn and the footbridge.
+
+**Audit (measured).** Start (-96, 52); entrances ST (80, -109) and STW (2, -104.5), 239 m and 185 m in a straight line. Street-graph lengths: shortest 218 m (40 s); market and footbridge 234 m (42 s); backstreets 235 m (43 s); Shun Hing Street 319 m (58 s); the market route with two deliberate wrong turns 483 m (88 s). Ground-only A* with real collision (stairs solid, so no bridge): 233 m to STW, 283 m to ST. Real walking adds a few percent. The lost-walker simulation (not a playtest) gives a 90th percentile of 5.7 min. A player who knows the way has about 8 of 9 minutes spare, so the challenge comes from finding the way, not the clock; the timer was not touched. All three routes were already distinct and overlap little; nothing was changed.
+
+**Clues.** Five directional plates (`WAYFINDING` in `world/signage.ts`, placed in `props.ts`, drawn by `facade/fixtures.ts`): 往海旁站 / TO HOI PONG STATION with an arrow along the street, in the existing blue transit plate palette. They are on Kam Fung Street south of the market, the market's north end, Wing On Lane, Chung Wo Street and Ching Wan Road. Left or right is worked out from the wall the plate is on. None are near the start, and the backstreet and main routes get only one each. The station name is the existing 海旁站 HOI PONG STATION; the entrance board, the existing 鐵路 plates by the trunk road and the pocket plates are unchanged. Check `Every directional station sign found a wall` in `check:world`.
+
+**Audio.** New wide, faint `railFar` zone (120 m around the entrances): the rail bed gets a floor of 0.035 and a muffled, quiet distant train now and then. Both go through the Ambience bus, so the slider and mute apply, and the music level is untouched. Nothing is directional.
+
+**Bridge.** Unchanged. Measured: the station sign band is visible from 1 of 32 sample points on the deck and stairs (the south stair head, 60 m away, deep in fog), so the bridge does not reveal the entrance.
+
+**Landmarks.** The corner tower (teal, ribbon windows, 40 m), the lit red restaurant, the market and the green footbridge sign were left as they are; no new landmark objects.
+
+**Dev.** The dev HUD now shows start and entrance coordinates and the straight-line distance to the nearest entrance. The dev map already draws the three routes; F6 resets to the start.
+
+**Needs manual playtesting.** Whether the plates are readable at 360p (they are 1.9 m wide and sit at 2.9 m; check the arrow glyph in the CJK font used), their arrow direction on each street, whether they sit clear of awnings in the market, how loud the far train is, bridge views at dawn light, and whether the clues make the route too easy. The embedded browser cannot reach the dev server, so none of this has been seen.
