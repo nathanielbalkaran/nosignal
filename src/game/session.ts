@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { playerState, resetPlayer } from '../player/playerState.ts'
 import { clock, LIMIT_MS } from './clock.ts'
 import { discoveries } from './discoveries.ts'
+import { achievements } from './achievements.ts'
 import { restaurant } from './restaurant.ts'
 
 /*
@@ -105,6 +106,7 @@ function finish(state: 'WON' | 'LOST') {
   const elapsedMs = Math.min(clock.elapsedMs(), LIMIT_MS)
   // Set the state first, so the pointer-lock change that follows does not read as a pause.
   set({ state, result: { elapsedMs: state === 'LOST' ? LIMIT_MS : elapsedMs, remainingMs: Math.max(0, LIMIT_MS - elapsedMs) }, prompt: null, receiptOpen: false })
+  if (state === 'WON') achievements.unlock('homeward_bound')
   releaseLock()
 }
 

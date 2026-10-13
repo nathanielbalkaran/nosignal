@@ -21,9 +21,9 @@ export interface RestaurantDoor {
 }
 
 /** The player is offered the door within this distance, on the street side, looking at it. */
-export const DOOR_DISTANCE = 4
-const DOOR_ACROSS = 1.8
-const DOOR_FACING_DEG = 55
+export const DOOR_DISTANCE = 5
+const DOOR_ACROSS = 2.2
+const DOOR_FACING_DEG = 60
 const DOOR_FRONT = 1.7
 
 const doors = new WeakMap<World, RestaurantDoor>()

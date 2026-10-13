@@ -5,6 +5,9 @@ import { ambientAudio } from '../../audio/ambient.ts'
 import { buttonClick, cradle, dialTone, disconnect, dispense, meow } from '../../audio/interact.ts'
 import { CALL_SECONDS, CAT_SECONDS, discoveries, type PhoneMessage } from '../../game/discoveries.ts'
 import { session, type Place } from '../../game/session.ts'
+import { playerState } from '../../player/playerState.ts'
+import { placeDiscoveries } from '../../world/discoveries.ts'
+import { world } from '../../world/index.ts'
 import { Geo } from '../geo/Geo.ts'
 import { retroTexture } from '../geo/retroTextures.ts'
 import { catAnim } from './catAnim.ts'
@@ -171,8 +174,9 @@ export function DiscoveryScenes() {
   const getCamera = useThree((s) => () => s.camera as PerspectiveCamera)
   const scenes = useHold(createScenes)
   const getScene = () => scenes.current
+  const discs = useMemo(() => placeDiscoveries(world), [])
 
-  const prev = useRef({ cat: 0, dispense: 0, phone: 'down' as 'down' | 'up', tone: 0, dial: 0, dead: false, take: 0 })
+  const prev = useRef({ cat: 0, dispense: 0, phone: 'down' as 'down' | 'up', tone: 0, dial: 0, dead: false, take: 0, meowCooldown: 0, humCooldown: 0, arcadeCooldown: 0 })
   const look = useMemo(() => new Vector3(), [])
 
   useFrame(function tick(_, rawDt) {
@@ -189,6 +193,30 @@ export function DiscoveryScenes() {
     catAnim.active = petting
     catAnim.t = petting ? d.cat / CAT_SECONDS : 0
     p.cat = d.cat
+
+    // Proximity ambient sounds — only while on the street, not interacting.
+    if (playing && snap.view === 'STREET' && !petting) {
+      const px = playerState.x, pz = playerState.z
+      p.meowCooldown = Math.max(0, p.meowCooldown - dt)
+      p.humCooldown = Math.max(0, p.humCooldown - dt)
+      p.arcadeCooldown = Math.max(0, p.arcadeCooldown - dt)
+      for (const disc of discs) {
+        const dx = px - disc.at[0], dz = pz - disc.at[1]
+        const dist = Math.hypot(dx, dz)
+        if (disc.kind === 'cat' && dist < 5 && p.meowCooldown <= 0) {
+          meow()
+          p.meowCooldown = 12 + Math.random() * 14
+        }
+        if (disc.kind === 'vending' && dist < 4 && p.humCooldown <= 0) {
+          ambientAudio.play('hum', 0.06, 1.0, 600)
+          p.humCooldown = 8
+        }
+        if (disc.kind === 'arcade' && dist < 8 && p.arcadeCooldown <= 0) {
+          ambientAudio.play('birdA', 0.04, 0.7, 2200)
+          p.arcadeCooldown = 5 + Math.random() * 6
+        }
+      }
+    }
 
     const view = snap.view
     const active = view === 'VENDING' || view === 'PHONE'

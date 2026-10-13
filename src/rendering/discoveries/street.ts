@@ -43,11 +43,13 @@ function vending(s: Sink) {
   g.span(-0.26, 0.9, 0.37, 0.26, 1.5, 0.39, GLASS)
   const cans = ['#a85a3a', '#c9b24a', '#d8d2c0', '#8a3a34', '#c9b24a', '#d8d2c0']
   cans.forEach((c, i) => g.cyl(-0.18 + (i % 3) * 0.16, 0.95 + Math.floor(i / 3) * 0.26, 0.41, 0.05, 0.16, c, 6))
-  // Selection buttons, three of them, two lit.
+  // Selection buttons — all three lit amber so the machine reads as powered-on.
   for (let i = 0; i < 3; i++) {
     g.span(0.32, 1.0 + i * 0.14, 0.34, 0.4, 1.08 + i * 0.14, 0.4, STEEL_DARK)
-    e.span(0.33, 1.015 + i * 0.14, 0.39, 0.39, 1.065 + i * 0.14, 0.41, i === 1 ? '#4a4a4c' : AMBER)
+    e.span(0.33, 1.015 + i * 0.14, 0.39, 0.39, 1.065 + i * 0.14, 0.41, AMBER)
   }
+  // A power / status LED on the top-right: bright green, visible from across the street.
+  e.span(0.38, 1.78, 0.35, 0.42, 1.82, 0.39, '#4acc6a')
   // The dispensing flap.
   g.span(-0.26, 0.3, 0.34, 0.26, 0.62, 0.42, STEEL)
   g.span(-0.22, 0.34, 0.4, 0.22, 0.56, 0.44, '#2a2e32')
@@ -83,8 +85,10 @@ function phone(s: Sink) {
   // Keypad and a faded instruction card.
   for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) g.span(-0.07 + c * 0.05, 1.28 + r * 0.06, 0.0, -0.04 + c * 0.05, 1.31 + r * 0.06, 0.03, CREAM)
   g.span(-0.12, 1.18, 0.0, 0.12, 1.26, 0.02, '#8a8474')
-  // A coin slot that still glows faintly.
+  // A coin slot that still glows — brighter so it catches the eye.
   e.span(0.06, 1.6, 0.0, 0.1, 1.66, 0.03, AMBER)
+  // Small overhead lamp inside the hood, casting warm light down the front.
+  e.span(-0.06, 2.01, 0.02, 0.06, 2.04, 0.08, '#f0d88c') // lamp face
   // The shelf under the phone.
   g.span(-0.3, 1.05, -0.2, 0.3, 1.1, 0.22, STEEL)
 }
@@ -92,16 +96,21 @@ function phone(s: Sink) {
 /** A plain steel door in the wall: the way up to the roof. */
 function stairwellDoor(s: Sink) {
   const g = s.solid
+  const e = s.emissive
   // The door leaf, set just proud of the wall, with a small step in front.
   g.span(-0.5, 0.02, -0.06, 0.5, 2.1, 0.04, '#4a4e52', { grime: 0.65 })
   g.span(-0.54, 0, -0.08, 0.54, 2.16, -0.04, '#2e3236') // frame
   g.span(-0.5, 0, -0.1, 0.5, 0.08, 0.16, '#6a6860') // step
-  // Kick plate, handle, a small unlit lamp above, and a faded plate.
+  // Kick plate, handle, and a faded plate.
   g.span(-0.46, 0.08, 0.03, 0.46, 0.3, 0.05, STEEL)
   g.span(0.3, 0.95, 0.03, 0.42, 1.05, 0.09, STEEL_DARK)
   g.span(-0.12, 1.7, 0.03, 0.12, 1.9, 0.05, '#3a3e42')
-  g.span(-0.16, 2.16, -0.06, 0.16, 2.3, 0.08, STEEL_DARK)
-  g.span(-0.1, 2.18, 0.06, 0.1, 2.26, 0.1, '#2a2e32')
+  // Access sign above the door — green box with an upward arrow, so the player reads "roof access".
+  g.span(-0.18, 2.16, -0.06, 0.18, 2.35, 0.08, '#2a3a2a') // sign housing
+  e.span(-0.14, 2.19, 0.07, 0.14, 2.32, 0.09, '#3a8a4a') // green face
+  e.span(-0.02, 2.21, 0.08, 0.02, 2.28, 0.10, '#c8f0c8') // small upward arrow hint
+  // A small warm indicator dot beside the handle — glows to show the door is alive.
+  e.span(0.28, 0.97, 0.08, 0.32, 1.01, 0.10, AMBER)
 }
 
 /** An arcade cabinet standing in a shallow shopfront recess. */

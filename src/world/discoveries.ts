@@ -184,11 +184,11 @@ export interface PlayerView {
 
 /** How close the player must be, and how directly they must face the object, for each kind. */
 const REACH: Record<DiscoveryKind, { dist: number; facing: number }> = {
-  cat: { dist: 2.8, facing: 70 },
-  vending: { dist: 2.6, facing: 60 },
-  phone: { dist: 2.5, facing: 60 },
-  roof: { dist: 2.8, facing: 55 },
-  arcade: { dist: 2.8, facing: 60 },
+  cat: { dist: 3.5, facing: 75 },
+  vending: { dist: 3.2, facing: 65 },
+  phone: { dist: 3.0, facing: 65 },
+  roof: { dist: 3.5, facing: 65 },
+  arcade: { dist: 3.5, facing: 70 },
 }
 
 /**

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { restaurant, useRestaurant } from '../game/restaurant.ts'
+import { achievements } from '../game/achievements.ts'
 import { session, useGame } from '../game/session.ts'
 import { drawReceipt, RECEIPT_H, RECEIPT_W } from './receiptArt.ts'
 import { PRIMARY, type } from './typography.ts'
@@ -26,7 +27,10 @@ const choosing = () => {
   return p === 'menu' || p === 'greeting'
 }
 function sitDownForTea() {
-  if (choosing()) session.sitDown()
+  if (choosing()) {
+    session.sitDown()
+    achievements.unlock('take_your_time')
+  }
 }
 function exitRestaurant() {
   if (choosing()) session.exitRestaurant()

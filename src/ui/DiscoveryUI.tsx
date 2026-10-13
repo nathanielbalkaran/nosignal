@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { DISPENSE_SECONDS, discoveries, useDiscoveries, type Drink, type PhoneMessage } from '../game/discoveries.ts'
+import { achievements } from '../game/achievements.ts'
 import { session, useGame } from '../game/session.ts'
 import { ArcadeGame } from './ArcadeGame.tsx'
 import { PRIMARY, type } from './typography.ts'
@@ -103,9 +104,13 @@ const corner: CSSProperties = { position: 'fixed', right: 22, bottom: 18, displa
 
 /** Standing by the stair door. */
 function RoofDoor() {
+  function sitOnRoof() {
+    session.setPlace('ROOF_SEAT')
+    achievements.unlock('above_the_city')
+  }
   return (
     <div style={corner} className="ns-fade-in">
-      <button type="button" className="ns-btn" onClick={() => session.setPlace('ROOF_SEAT')}>[E] SIT DOWN</button>
+      <button type="button" className="ns-btn" onClick={sitOnRoof}>[E] SIT DOWN</button>
       <button type="button" className="ns-btn" onClick={() => session.leaveScene()}>[Q] EXIT ROOFTOP</button>
     </div>
   )
@@ -153,8 +158,10 @@ export function DiscoveryUI() {
         if (drink) discoveries.chooseDrink(drink.id)
         else if (e.code === 'KeyE') session.leaveScene()
       } else if (snap.place === 'ROOF') {
-        if (e.code === 'KeyE') session.setPlace('ROOF_SEAT')
-        else if (e.code === 'KeyQ') session.leaveScene()
+        if (e.code === 'KeyE') {
+          session.setPlace('ROOF_SEAT')
+          achievements.unlock('above_the_city')
+        } else if (e.code === 'KeyQ') session.leaveScene()
       } else if (snap.place === 'ROOF_SEAT') {
         if (e.code === 'KeyE') session.setPlace('ROOF')
       } else if (snap.place === 'PHONE') {

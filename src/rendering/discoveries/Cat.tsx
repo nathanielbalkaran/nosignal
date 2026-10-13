@@ -66,14 +66,23 @@ export function Cat() {
     const show = session.getSnapshot().view === 'STREET'
     root.visible = show
     if (!show) return
+    const t = clock.elapsedTime
     const u = catAnim.active ? catAnim.t : 0
     // Looks up at the hand, then settles back down.
     const look = Math.sin(Math.min(1, u) * Math.PI)
     if (head.current) head.current.rotation.x = -0.5 * look
     if (head.current) head.current.rotation.y = 0.25 * look
-    // Breathing, a small lean into the hand, and the tail tip sweeping once.
-    if (body.current) body.current.position.y = Math.sin(u * Math.PI) * 0.015 + Math.sin(clock.elapsedTime * 2.2) * 0.003
-    if (tail.current) tail.current.rotation.y = Math.sin(u * Math.PI * 2) * 0.35 * look
+    // Idle: gentle breathing, occasional slow head turn. Active: lean in, tail sweeps.
+    const breath = Math.sin(t * 1.8) * 0.004
+    if (body.current) body.current.position.y = Math.sin(u * Math.PI) * 0.015 + breath
+    // Tail: idle slow sway; petting a full sweep.
+    const idleTail = Math.sin(t * 0.9) * 0.18 + Math.sin(t * 1.7) * 0.06
+    if (tail.current) tail.current.rotation.y = catAnim.active ? Math.sin(u * Math.PI * 2) * 0.35 * look : idleTail
+    // Idle head: a subtle turn now and then.
+    if (!catAnim.active && head.current) {
+      head.current.rotation.y = Math.sin(t * 0.34) * 0.12
+      head.current.rotation.x = -0.05 + breath * 4
+    }
   })
 
   return (

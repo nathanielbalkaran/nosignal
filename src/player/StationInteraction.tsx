@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect } from 'react'
 import { CAT_SECONDS, discoveries } from '../game/discoveries.ts'
+import { achievements } from '../game/achievements.ts'
 import { session } from '../game/session.ts'
 import { nearbyDiscovery } from '../world/discoveries.ts'
 import { enterableEntrance } from '../world/goal.ts'
@@ -38,15 +39,30 @@ export function StationInteraction() {
       }
       if (snap.place !== 'STREET' || !session.canMove()) return
       // Re-check at the moment of the press; the prompt is only a hint.
-      if (enterableEntrance(world, playerState) !== null) session.enterStation()
-      else if (nearRestaurantDoor(world, playerState)) session.enterRestaurant()
-      else {
+      if (enterableEntrance(world, playerState) !== null) {
+        // Only award the achievement if the player actually catches the train (WIN).
+        // homeward_bound is awarded from session when the result becomes WON — handled elsewhere.
+        session.enterStation()
+      } else if (nearRestaurantDoor(world, playerState)) {
+        session.enterRestaurant()
+        achievements.unlock('local_regular')
+      } else {
         const found = nearbyDiscovery(world, playerState)
-        if (found?.kind === 'cat') discoveries.petCat()
-        else if (found?.kind === 'vending') session.enterScene('VENDING', () => discoveries.openVending())
-        else if (found?.kind === 'phone') session.enterScene('PHONE', () => discoveries.openPhone())
-        else if (found?.kind === 'roof') session.enterScene('ROOF', () => {})
-        else if (found?.kind === 'arcade') session.enterScene('ARCADE', () => {})
+        if (found?.kind === 'cat') {
+          discoveries.petCat()
+          achievements.unlock('nine_lives')
+        } else if (found?.kind === 'vending') {
+          session.enterScene('VENDING', () => discoveries.openVending())
+          achievements.unlock('something_cold')
+        } else if (found?.kind === 'phone') {
+          session.enterScene('PHONE', () => discoveries.openPhone())
+          achievements.unlock('wrong_number')
+        } else if (found?.kind === 'roof') {
+          session.enterScene('ROOF', () => {})
+        } else if (found?.kind === 'arcade') {
+          session.enterScene('ARCADE', () => {})
+          achievements.unlock('last_stop')
+        }
       }
     }
     window.addEventListener('keydown', onKey)
