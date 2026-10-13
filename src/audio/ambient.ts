@@ -131,7 +131,7 @@ class AmbientAudio {
   }
 
   private sync() {
-    const want = session.getStatus() === 'playing' && !document.hidden && document.hasFocus()
+    const want = session.getStatus() === 'PLAYING' && !document.hidden && document.hasFocus()
     if (want && !this.ctx) this.unlock()
     this.setRunning(want)
   }

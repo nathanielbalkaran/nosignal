@@ -3,7 +3,9 @@ import { useEffect } from 'react'
 import { ACESFilmicToneMapping, SRGBColorSpace } from 'three'
 import { SCENE, retroDpr } from '../config/scene.ts'
 import { AmbientAudio } from '../audio/AmbientAudio.tsx'
+import { useGame } from '../game/session.ts'
 import { PlayerController } from '../player/PlayerController.tsx'
+import { StationInteraction } from '../player/StationInteraction.tsx'
 import { AmbientLife } from './ambient/AmbientLife.tsx'
 import { Ground } from './Ground.tsx'
 import { Lighting } from './Lighting.tsx'
@@ -20,6 +22,8 @@ function RetroResolution() {
 }
 
 export function GameCanvas() {
+  // A new run remounts only the ambient layer, so one-shot events and figures can play again.
+  const { runId } = useGame()
   const { camera, sky, fog } = SCENE
 
   return (
@@ -36,9 +40,10 @@ export function GameCanvas() {
       <Lighting />
       <Ground />
       <WorldView />
-      <AmbientLife />
+      <AmbientLife key={runId} />
       <AmbientAudio />
       <PlayerController />
+      <StationInteraction />
     </Canvas>
   )
 }

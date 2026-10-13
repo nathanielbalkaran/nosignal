@@ -19,3 +19,9 @@ export function placePlayer(x: number, z: number, y = 0, yaw = playerState.yaw) 
   playerState.y = y
   playerState.yaw = yaw
 }
+
+/** Back to the fixed start: position, facing and level gaze. */
+export function resetPlayer() {
+  placePlayer(world.spawn.at[0], world.spawn.at[1], 0, world.spawn.yaw)
+  playerState.pitch = 0
+}

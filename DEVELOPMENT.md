@@ -432,6 +432,20 @@ Not seen in a browser (the embedded one cannot reach the dev server). Needs a lo
 - Additive light decals (streetlight and shop pools) now fade with distance instead of ignoring fog; skyline towers have the haze baked in (`SKYLINE_HAZE`); streetlight pool strength is `LAMP_POOL_STRENGTH`.
 - Fog does not make rendering cheaper; no performance change is claimed.
 
+## Phase 3A — Core gameplay loop (awaiting review)
+
+Title screen, Play (timed) and Explore (untimed) modes, pause menu, win and loss. Same scene for every state; no world, audio-generation or renderer changes.
+
+- **State** (`game/session.ts`): `TITLE | PLAYING | PAUSED | WON | LOST` plus mode `PLAY | EXPLORE`, one small external store (`useGame()`). Entering or resuming play requests pointer lock and becomes PLAYING only when granted; a denied request leaves the menu up with a "click again" hint. `pause()` is idempotent, so Esc key + `pointerlockchange` cannot double-fire. Held keys are cleared whenever state leaves PLAYING. `attachSession()` (called once in `App`) owns the window listeners.
+- **Clock** (`game/clock.ts`): accumulates `performance.now()` only while PLAYING in Play mode, tab visible and window focused. One `setTimeout` schedules the two-minute warning, then the 05:21:00 deadline. Start 05:12:00, limit 9 min, both constants in that file.
+- **Start**: the existing spawn (Tak On Street / Lok Wo Lane corner, facing NE). Checked: 54 m of open walking straight ahead, a street, a lane and an alley meet there, station not visible (`check:world`). `resetPlayer()` restores position, facing and pitch.
+- **Station** (`world/goal.ts`, `enterableEntrance`): within 7 m of the doorway, on the street side of the wall, inside the pocket width, at street level, looking within 40° of the door. Prompt via `StationInteraction`; E re-checks at press time. Explore shows "STATION ENTRANCE" only. Covered by a test in `test-movement.ts`.
+- **UI** (`ui/`): `TitleScreen`, `PauseMenu` (reuses `MusicSelector`, `AudioSliders`), `EndScreen`, `Hud` (T wristwatch for 3 s, one "02:00 REMAINING" warning, entrance prompt).
+- **Audio**: music no longer auto-starts or starts on any gesture; it plays only while PLAYING, pauses on pause, fades on win/loss, and is unlocked by the Play/Explore/Resume click. Added a music mute (`mixer.setMusicMuted`, persisted). Each run remounts only `AmbientLife` (via `runId`) so one-shot events replay.
+- **Dev** (dev builds only): F6 reset player, F7 reset clock, F8 freeze clock, F9 set 30 s remaining; the HUD shows mode, state and clock; `window.__game` exposes the store and clock. `?nolock` skips pointer lock so automation can play.
+
+Not done: a sound-effects slider (the game has no SFX; all one-shots belong to the Ambience channel).
+
 ## Phase 3B — Navigation design (awaiting review)
 
 No new streets, geometry, collision, timer or speed changes. `npm run nav:audit` (`scripts/nav-audit.ts`) prints start and entrance coordinates, route lengths and times at 5.5 m/s, and station visibility from the spawn and the footbridge.

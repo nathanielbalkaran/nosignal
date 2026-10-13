@@ -1,3 +1,4 @@
+import { type } from './typography.ts'
 import { useSyncExternalStore, type CSSProperties } from 'react'
 import { music } from '../audio/music/player.ts'
 import { TRACKS } from '../audio/music/tracks.ts'
@@ -8,15 +9,13 @@ const panel: CSSProperties = {
   minWidth: 260,
   background: 'rgba(14, 13, 20, 0.72)',
   border: '1px solid rgba(232, 228, 220, 0.22)',
-  fontFamily: '"Courier New", ui-monospace, monospace',
-  fontSize: 13,
-  letterSpacing: '0.04em',
+  ...type.readout,
   cursor: 'default',
 }
 
-const heading: CSSProperties = { fontSize: 11, letterSpacing: '0.2em', opacity: 0.85 }
-const sub: CSSProperties = { fontSize: 10, letterSpacing: '0.2em', opacity: 0.5, marginBottom: 8 }
-const foot: CSSProperties = { fontSize: 10, opacity: 0.5, marginTop: 8, letterSpacing: '0.08em' }
+const heading: CSSProperties = { ...type.readout, letterSpacing: '0.15em', opacity: 0.9 }
+const sub: CSSProperties = { ...type.readoutSmall, letterSpacing: '0.15em', opacity: 0.55, marginBottom: 8 }
+const foot: CSSProperties = { ...type.readoutSmall, opacity: 0.55, marginTop: 8 }
 
 const row = (selected: boolean): CSSProperties => ({
   display: 'flex',
@@ -27,6 +26,7 @@ const row = (selected: boolean): CSSProperties => ({
   border: 0,
   color: selected ? '#f2efe6' : 'rgba(232, 228, 220, 0.6)',
   font: 'inherit',
+  letterSpacing: 'inherit',
   textAlign: 'left',
   cursor: 'pointer',
 })
