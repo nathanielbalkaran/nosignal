@@ -1,7 +1,7 @@
 /** First-person movement and camera tuning. All movement feel is set here. */
 export const PLAYER = {
-  /** Base movement speed in metres per second. The main traversal-pace dial. */
-  speed: 5.5,
+  /** Base movement speed in metres per second (damped by 10% from 5.5). The main traversal-pace dial. */
+  speed: 4.95,
   /** How quickly velocity closes on the input direction (per second). Higher is snappier. */
   acceleration: 20,
   /** How quickly velocity falls to zero once keys are released (per second). */

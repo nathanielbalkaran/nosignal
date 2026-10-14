@@ -6,6 +6,7 @@ import { world } from '../world/index.ts'
 import { keyboard } from './keyboard.ts'
 import { followEyeHeight, stepMovement, type MoveInput, type Velocity } from './movement.ts'
 import { playerState } from './playerState.ts'
+import { viewBobbing } from './viewBobbing.ts'
 
 /** Some browsers report a huge movement on the first event after locking. */
 const MAX_MOUSE_DELTA = 250
@@ -59,6 +60,7 @@ export function PlayerController() {
       session.setLockHandler(null)
       document.removeEventListener('pointerlockchange', onLockChange)
       document.removeEventListener('mousemove', onMouseMove)
+      viewBobbing.reset()
     }
   }, [canvas])
 
@@ -68,8 +70,10 @@ export function PlayerController() {
     if (session.getSnapshot().view !== 'STREET') {
       velocity.current.x = 0
       velocity.current.z = 0
+      viewBobbing.reset()
       return
     }
+    let movedDist = 0
     if (session.canMove()) {
       const input: MoveInput = { forward: 0, strafe: 0 }
       if (keyboard.isDown('KeyW', 'ArrowUp')) input.forward += 1
@@ -77,6 +81,7 @@ export function PlayerController() {
       if (keyboard.isDown('KeyD', 'ArrowRight')) input.strafe += 1
       if (keyboard.isDown('KeyA', 'ArrowLeft')) input.strafe -= 1
       const next = stepMovement(world, playerState, velocity.current, input, playerState.yaw, dt)
+      movedDist = Math.hypot(next.x - playerState.x, next.z - playerState.z)
       playerState.x = next.x
       playerState.z = next.z
       playerState.y = next.y
@@ -86,8 +91,22 @@ export function PlayerController() {
     }
 
     eyeY.current = followEyeHeight(eyeY.current, playerState.y, dt)
-    camera.position.set(playerState.x, eyeY.current + PLAYER.eyeHeight, playerState.z)
-    camera.rotation.set(playerState.pitch, playerState.yaw, 0, 'YXZ')
+
+    const bob = viewBobbing.step(movedDist, dt, session.canMove())
+    const swayX = Math.cos(playerState.yaw) * bob.sway
+    const swayZ = -Math.sin(playerState.yaw) * bob.sway
+
+    camera.position.set(
+      playerState.x + swayX,
+      eyeY.current + PLAYER.eyeHeight + bob.bobY,
+      playerState.z + swayZ,
+    )
+    camera.rotation.set(
+      playerState.pitch + bob.pitch,
+      playerState.yaw,
+      bob.roll,
+      'YXZ',
+    )
   })
 
   return null

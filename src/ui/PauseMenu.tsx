@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import { session, useGame } from '../game/session.ts'
 import { AudioSliders } from './AudioSliders.tsx'
 import { MusicSelector } from './MusicSelector.tsx'
+import { SettingsPanel } from './SettingsPanel.tsx'
 import { hintStyle, LOCK_HINT, restartGame, resumeGame, screen } from './theme.ts'
 import { ACHIEVEMENT_DEFS, useAchievements } from '../game/achievements.ts'
 
@@ -61,6 +62,7 @@ export function PauseMenu() {
         <button type="button" className="ns-btn" onClick={() => session.toTitle()}>MAIN MENU</button>
       </div>
       {lockBlocked && <p style={hintStyle}>{LOCK_HINT}</p>}
+      <SettingsPanel />
       <MusicSelector />
       <AudioSliders />
       <AchievementsSection />
