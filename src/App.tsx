@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react'
 import { attachSession, useGame } from './game/session.ts'
 import { GameCanvas } from './rendering/GameCanvas.tsx'
 import { AchievementNotification } from './ui/AchievementNotification.tsx'
+import { CinematicOverlay } from './ui/CinematicOverlay.tsx'
 import { DiscoveryUI } from './ui/DiscoveryUI.tsx'
 import { EndScreen } from './ui/EndScreen.tsx'
 import { Hud } from './ui/Hud.tsx'
@@ -25,6 +26,7 @@ export function App() {
       <DiscoveryUI />
       {state === 'TITLE' && <TitleScreen />}
       {state === 'PAUSED' && <PauseMenu />}
+      {state === 'CINEMATIC' && <CinematicOverlay />}
       {(state === 'WON' || state === 'LOST') && <EndScreen />}
       <AchievementNotification />
       <MusicUI />

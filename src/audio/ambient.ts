@@ -48,6 +48,8 @@ class AmbientAudio {
   private master: GainNode | null = null
   /** master (pause fade) <- ambience bus (user volume) <- every ambient source. */
   private ambienceBus: GainNode | null = null
+  /** master (pause fade) <- sfx bus (user volume) <- sound effects and footsteps. */
+  private sfxBus: GainNode | null = null
   private buffers = new Map<SoundName, AudioBuffer>()
   private running = false
   private suspendTimer = 0
@@ -99,6 +101,8 @@ class AmbientAudio {
       this.master.connect(this.ctx.destination)
       this.ambienceBus = this.ctx.createGain()
       this.ambienceBus.connect(this.master)
+      this.sfxBus = this.ctx.createGain()
+      this.sfxBus.connect(this.master)
       this.applyVolumes()
       const samples = makeSamples()
       for (const [name, data] of Object.entries(samples) as [SoundName, Float32Array][]) {
@@ -108,6 +112,18 @@ class AmbientAudio {
       }
     }
     this.sync()
+  }
+
+  getCtx(): AudioContext | null {
+    return this.ctx
+  }
+
+  getAmbienceBus(): GainNode | null {
+    return this.ambienceBus
+  }
+
+  getSfxBus(): GainNode | null {
+    return this.sfxBus
   }
 
   /** Follows the session, the tab's visibility and window focus. */
@@ -128,16 +144,22 @@ class AmbientAudio {
     }
   }
 
-  /** Applies the ambience slider. Set directly (not ramped) so it also holds while the context is suspended. */
+  /** Applies the volume sliders. Set directly (not ramped) so it also holds while the context is suspended. */
   private applyVolumes() {
-    const bus = this.ambienceBus
-    if (!bus || !this.ctx) return
-    bus.gain.cancelScheduledValues(this.ctx.currentTime)
-    bus.gain.value = mixer.get('ambience')
+    if (!this.ctx) return
+    if (this.ambienceBus) {
+      this.ambienceBus.gain.cancelScheduledValues(this.ctx.currentTime)
+      this.ambienceBus.gain.value = mixer.get('ambience')
+    }
+    if (this.sfxBus) {
+      this.sfxBus.gain.cancelScheduledValues(this.ctx.currentTime)
+      this.sfxBus.gain.value = mixer.get('sfx')
+    }
   }
 
   private sync() {
-    const want = session.getStatus() === 'PLAYING' && !document.hidden && document.hasFocus()
+    const status = session.getStatus()
+    const want = (status === 'PLAYING' || status === 'CINEMATIC') && !document.hidden && document.hasFocus()
     if (want && !this.ctx) this.unlock()
     this.setRunning(want)
   }
@@ -167,9 +189,11 @@ class AmbientAudio {
     if (this.applyIn > 0) return
     this.applyIn = APPLY_INTERVAL
 
-    // Inside the restaurant the street is muffled and the café is all around.
-    // On the rooftop the same street is further away: softer, birds unchanged.
     const place = session.getSnapshot().place
+    if (place === 'TRAIN') {
+      for (const b of this.beds) this.driveBed(b, 0)
+      return
+    }
     const indoor = place === 'COUNTER' || place === 'TABLE' ? 1 : 0
     const above = place === 'ROOF' || place === 'ROOF_SEAT' ? 1 : 0
     const levels = { trunk: trunkLevel(x, z) * (1 - 0.5 * indoor) * (1 - 0.4 * above), vehicle: (this.vehicle + this.windowVehicle) * (1 - 0.7 * above), indoor, above } as Levels
@@ -238,7 +262,7 @@ class AmbientAudio {
   }
 
   /** One-shot at a given loudness (already attenuated by the caller). */
-  play(sound: SoundName, gain: number, rate = 1, lowpass?: number, pan = 0) {
+  play(sound: SoundName, gain: number, rate = 1, lowpass?: number, pan = 0, channel: 'ambience' | 'sfx' = 'ambience') {
     const { ctx } = this
     const buffer = this.buffers.get(sound)
     if (!ctx || !this.running || !buffer || gain < 0.004) return
@@ -257,11 +281,48 @@ class AmbientAudio {
     }
     const panner = ctx.createStereoPanner()
     panner.pan.value = pan
-    tail.connect(g).connect(panner).connect(this.ambienceBus!)
+    const bus = channel === 'sfx' ? (this.sfxBus ?? this.ambienceBus!) : this.ambienceBus!
+    tail.connect(g).connect(panner).connect(bus)
     this.active++
     source.onended = () => {
       this.active--
       panner.disconnect()
+    }
+    source.start()
+  }
+
+  /** Subtle, realistic footstep audio routed through the SFX channel. */
+  playFootstep(surface: 'pavement' | 'bridge', leftFoot: boolean) {
+    const { ctx } = this
+    if (!ctx || !this.running) return
+    const variants: SoundName[] = surface === 'bridge'
+      ? ['stepBridgeA', 'stepBridgeB', 'stepBridgeC']
+      : ['stepPavementA', 'stepPavementB', 'stepPavementC']
+    const name = variants[Math.floor(this.rng.float() * variants.length)]
+    const buffer = this.buffers.get(name)
+    if (!buffer) return
+
+    // Slight pitch and volume variation so footsteps don't sound repetitive
+    const rate = this.rng.range(0.94, 1.06)
+    const baseGain = surface === 'bridge' ? 0.08 : 0.065
+    const gain = baseGain * this.rng.range(0.9, 1.1)
+    const pan = (leftFoot ? -1 : 1) * this.rng.range(0.08, 0.14)
+
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+    source.playbackRate.value = rate
+    const g = ctx.createGain()
+    g.gain.value = gain
+    const panner = ctx.createStereoPanner()
+    panner.pan.value = pan
+
+    const dest = this.sfxBus ?? this.ambienceBus ?? this.master!
+    source.connect(g).connect(panner).connect(dest)
+    this.active++
+    source.onended = () => {
+      this.active--
+      panner.disconnect()
+      g.disconnect()
     }
     source.start()
   }

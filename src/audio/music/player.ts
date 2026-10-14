@@ -27,7 +27,19 @@ function loadPrefs(): MusicState {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return prefs
-    const data = JSON.parse(raw) as { track?: unknown }
+    const data = JSON.parse(raw) as { track?: unknown; title?: unknown; v?: unknown }
+    if (typeof data.title === 'string') {
+      const idx = TRACKS.findIndex((t) => t.title === data.title)
+      if (idx >= 0) {
+        prefs.index = idx
+        return prefs
+      }
+    }
+    // If upgrading from older prefs where theme was index 7, keep theme as default.
+    if (data.v !== 2 && data.track === 7) {
+      prefs.index = DEFAULT_TRACK
+      return prefs
+    }
     if (typeof data.track === 'number' && Number.isInteger(data.track) && data.track >= 0 && data.track < TRACKS.length) {
       prefs.index = data.track
     }
@@ -39,7 +51,10 @@ function loadPrefs(): MusicState {
 
 function savePrefs(state: MusicState) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ track: state.index }))
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ track: state.index, title: TRACKS[state.index]?.title, v: 2 })
+    )
   } catch {
     // Ignore: preferences just won't persist.
   }
@@ -99,11 +114,12 @@ class MusicPlayer {
   private ensureAudio() {
     if (!this.audio && typeof Audio !== 'undefined') {
       const audio = new Audio()
-      audio.loop = true
+      audio.loop = false
       audio.preload = 'auto'
       audio.volume = 0
       audio.addEventListener('error', this.onError)
       audio.addEventListener('playing', this.onPlaying)
+      audio.addEventListener('ended', this.onEnded)
       this.audio = audio
     }
   }
@@ -121,7 +137,7 @@ class MusicPlayer {
     document.addEventListener('visibilitychange', onVisibility)
     this.hidden = document.hidden
     // Nothing plays until the player has chosen a mode (unlock is called from that click).
-    this.playing = session.getStatus() === 'PLAYING'
+    this.playing = session.getStatus() === 'PLAYING' || session.getStatus() === 'CINEMATIC'
     this.sync()
     return () => {
       unsubscribe()
@@ -136,6 +152,7 @@ class MusicPlayer {
     if (this.audio) {
       this.audio.removeEventListener('error', this.onError)
       this.audio.removeEventListener('playing', this.onPlaying)
+      this.audio.removeEventListener('ended', this.onEnded)
       this.audio.pause()
       this.audio.removeAttribute('src')
       this.audio.load()
@@ -149,8 +166,8 @@ class MusicPlayer {
 
   private onStatus(status: GameState) {
     const wasPlaying = this.playing
-    // Music plays during active gameplay only; pause, title and endings stop it.
-    this.playing = status === 'PLAYING'
+    // Music plays during active gameplay and cinematic ending; pause, title and completion screen stop it.
+    this.playing = status === 'PLAYING' || status === 'CINEMATIC'
     if (status === 'WON' || status === 'LOST') {
       this.endGame()
       return
@@ -176,6 +193,12 @@ class MusicPlayer {
     console.warn(`[music] could not load or decode track ${this.loadedIndex + 1}`, audio?.error?.message ?? '')
   }
 
+  /** When a track finishes, automatically advance to the next track in the playlist. */
+  private readonly onEnded = () => {
+    if (!this.shouldPlay()) return
+    this.next()
+  }
+
   // --- controls ---
 
   select(index: number) {
@@ -188,10 +211,18 @@ class MusicPlayer {
   }
 
   next() {
+    if (TRACKS.length <= 1) {
+      this.startTrack()
+      return
+    }
     this.select(this.state.index + 1)
   }
 
   previous() {
+    if (TRACKS.length <= 1) {
+      this.startTrack()
+      return
+    }
     this.select(this.state.index - 1)
   }
 

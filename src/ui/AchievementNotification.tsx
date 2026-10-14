@@ -57,13 +57,18 @@ export function AchievementNotification() {
     if (!latest) return
     const def = ACHIEVEMENT_DEFS.find((d) => d.id === latest) ?? null
     if (!def) return
-    setCurrentDef(def)
-    setVisible(true)
+    const showTimer = window.setTimeout(() => {
+      setCurrentDef(def)
+      setVisible(true)
+    }, 0)
     const fadeTimer = window.setTimeout(() => {
       setVisible(false)
     }, SHOW_MS)
 
-    return () => window.clearTimeout(fadeTimer)
+    return () => {
+      window.clearTimeout(showTimer)
+      window.clearTimeout(fadeTimer)
+    }
   }, [latest])
 
   if (!currentDef) return null

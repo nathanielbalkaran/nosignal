@@ -1,7 +1,9 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
+import { ambientAudio } from '../audio/ambient.ts'
 import { PLAYER } from '../config/player.ts'
 import { session } from '../game/session.ts'
+import { isPlayerOnFootbridge } from '../world/collision.ts'
 import { world } from '../world/index.ts'
 import { keyboard } from './keyboard.ts'
 import { followEyeHeight, stepMovement, type MoveInput, type Velocity } from './movement.ts'
@@ -52,6 +54,12 @@ export function PlayerController() {
       )
     }
 
+    viewBobbing.setOnStep((foot) => {
+      if (!session.canMove()) return
+      const onBridge = isPlayerOnFootbridge(world, playerState.x, playerState.z, playerState.y)
+      ambientAudio.playFootstep(onBridge ? 'bridge' : 'pavement', foot === 'left')
+    })
+
     document.addEventListener('pointerlockchange', onLockChange)
     document.addEventListener('mousemove', onMouseMove)
     return () => {
@@ -60,6 +68,7 @@ export function PlayerController() {
       session.setLockHandler(null)
       document.removeEventListener('pointerlockchange', onLockChange)
       document.removeEventListener('mousemove', onMouseMove)
+      viewBobbing.setOnStep(null)
       viewBobbing.reset()
     }
   }, [canvas])

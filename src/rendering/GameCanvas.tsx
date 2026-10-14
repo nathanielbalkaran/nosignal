@@ -9,6 +9,7 @@ import { Cat } from './discoveries/Cat.tsx'
 import { RooftopScene } from './discoveries/RooftopScene.tsx'
 import { DiscoveryScenes } from './discoveries/scenes.tsx'
 import { RestaurantScene } from './restaurant/RestaurantScene.tsx'
+import { TrainScene } from './train/TrainScene.tsx'
 import { StationInteraction } from '../player/StationInteraction.tsx'
 import { AmbientLife } from './ambient/AmbientLife.tsx'
 import { Ground } from './Ground.tsx'
@@ -53,6 +54,7 @@ export function GameCanvas() {
       <DiscoveryScenes />
       <RooftopScene />
       <Cat />
+      <TrainScene />
       <AmbientAudio />
       <PlayerController />
       <StationInteraction />

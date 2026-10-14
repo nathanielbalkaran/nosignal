@@ -28,10 +28,21 @@ export interface BobOffset {
   pitch: number
 }
 
+export type FootstepCallback = (foot: 'left' | 'right') => void
+
 class ViewBobbingController {
   private phase = 0
   private blendWeight = 0
   private activeMult = BOBBING_MULTIPLIERS[settings.getViewBobbing()]
+  private onStepCallback: FootstepCallback | null = null
+
+  setOnStep(cb: FootstepCallback | null) {
+    this.onStepCallback = cb
+  }
+
+  getPhase(): number {
+    return this.phase
+  }
 
   /**
    * Advances the view bobbing simulation by `dt` seconds based on the actual
@@ -63,7 +74,7 @@ class ViewBobbingController {
       this.activeMult += (targetMult - this.activeMult) * multBlend
     }
 
-    const isWalking = canMove && actualSpeed > 0.05 && this.activeMult > 0.001
+    const isWalking = canMove && actualSpeed > 0.05
 
     let targetWeight = 0
     if (isWalking) {
@@ -73,11 +84,32 @@ class ViewBobbingController {
       const sprintAmp = 1 + Math.max(0, speedRatio - 1) * 0.35
       const cadenceFactor = 1 + Math.max(0, speedRatio - 1) * 0.25
 
-      targetWeight = sprintAmp
+      targetWeight = this.activeMult > 0.001 ? sprintAmp : 0
 
       // Distance-based phase advance: strictly synchronized with ground traversal.
       const deltaPhase = (movedDist / STRIDE_LENGTH) * (Math.PI * 2) * cadenceFactor
+      const prevPhase = this.phase
       this.phase = (this.phase + deltaPhase) % (Math.PI * 2)
+
+      if (this.onStepCallback) {
+        const TWO_PI = Math.PI * 2
+        const T1 = Math.PI * 0.5
+        const T2 = Math.PI * 1.5
+        const p0 = prevPhase
+        const p1 = prevPhase + deltaPhase
+
+        if (p0 < T1 && p1 >= T1) {
+          this.onStepCallback('left')
+        } else if (p0 < T2 && p1 >= T2) {
+          this.onStepCallback('right')
+        } else if (p1 >= TWO_PI && (p1 % TWO_PI) >= T1) {
+          this.onStepCallback('left')
+        }
+      }
+    } else {
+      if (this.blendWeight === 0) {
+        this.phase = 0
+      }
     }
 
     // Smoothly blend intensity in when starting, out when stopping.

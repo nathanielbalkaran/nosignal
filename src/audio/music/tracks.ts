@@ -10,6 +10,7 @@ export interface Track {
 export const ARTIST = 'Nathaniel Balkaran'
 
 export const TRACKS: readonly Track[] = [
+  { file: 'SigmondFreudBeat.mp3', title: 'no signal (theme)' },
   { file: '930inMarkham.mp3', title: 'nine thirty' },
   { file: 'battle bus.mp3', title: 'battlebus' },
   { file: 'legendofzelda_1.mp3', title: 'wannabe' },
@@ -18,7 +19,6 @@ export const TRACKS: readonly Track[] = [
   // macOS put a narrow no-break space (U+202F) before "PM" in this filename.
   { file: 'gapingbeat - 2024-03-31, 2.12\u202fPM.m4a', title: 'dazed and confused' },
   { file: 'lucky.mp3', title: 'get your hopes up' },
-  { file: 'SigmondFreudBeat.mp3', title: 'no signal (theme)' },
 ]
 
 /** "no signal (theme)" plays by default for first-time players. */

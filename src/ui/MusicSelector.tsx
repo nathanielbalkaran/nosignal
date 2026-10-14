@@ -1,53 +1,59 @@
-import { type } from './typography.ts'
 import { useSyncExternalStore, type CSSProperties } from 'react'
 import { music } from '../audio/music/player.ts'
 import { TRACKS } from '../audio/music/tracks.ts'
+import { SECONDARY } from './typography.ts'
 
-const panel: CSSProperties = {
-  marginTop: 10,
-  padding: '10px 14px 12px',
-  minWidth: 260,
-  background: 'rgba(14, 13, 20, 0.72)',
-  border: '1px solid rgba(232, 228, 220, 0.22)',
-  ...type.readout,
-  cursor: 'default',
+const wrap: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
 }
 
-const heading: CSSProperties = { ...type.readout, letterSpacing: '0.15em', opacity: 0.9 }
-const sub: CSSProperties = { ...type.readoutSmall, letterSpacing: '0.15em', opacity: 0.55, marginBottom: 8 }
-const foot: CSSProperties = { ...type.readoutSmall, opacity: 0.55, marginTop: 8 }
+const trackGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, 1fr)',
+  gap: '8px 12px',
+}
 
-const row = (selected: boolean): CSSProperties => ({
-  display: 'flex',
-  gap: 10,
-  width: '100%',
-  padding: '2px 4px',
-  background: selected ? 'rgba(232, 228, 220, 0.14)' : 'transparent',
-  border: 0,
-  color: selected ? '#f2efe6' : 'rgba(232, 228, 220, 0.6)',
-  font: 'inherit',
-  letterSpacing: 'inherit',
-  textAlign: 'left',
-  cursor: 'pointer',
-})
+const foot: CSSProperties = {
+  fontFamily: SECONDARY,
+  fontSize: 16,
+  letterSpacing: '0.1em',
+  color: 'rgba(232, 228, 220, 0.55)',
+  marginTop: 2,
+}
 
-/** Compact soundtrack picker. Reusable; shown in the pause overlay. */
+/** Track selector for the NO SIGNAL FM original soundtrack. */
 export function MusicSelector() {
   const { index } = useSyncExternalStore(music.subscribeState, music.getState)
 
   return (
-    // Clicks here must not reach the overlay behind, which resumes play.
-    <div style={panel} onClick={(e) => e.stopPropagation()}>
-      <div style={heading}>NO SIGNAL FM</div>
-      <div style={sub}>ORIGINAL SOUNDTRACK</div>
-      {TRACKS.map((track, i) => (
-        <button key={track.file} type="button" style={row(i === index)} onClick={() => music.select(i)} aria-pressed={i === index}>
-          <span style={{ width: 10 }}>{i === index ? '>' : ''}</span>
-          <span>{String(i + 1).padStart(2, '0')}</span>
-          <span>{track.title}</span>
-        </button>
-      ))}
-      <div style={foot}>N next · B previous</div>
+    <div style={wrap} onClick={(e) => e.stopPropagation()}>
+      <div style={trackGrid}>
+        {TRACKS.map((track, i) => {
+          const selected = i === index
+          return (
+            <button
+              key={track.file}
+              type="button"
+              className={`ns-track-btn ${selected ? 'active' : ''}`}
+              onClick={() => music.select(i)}
+              aria-pressed={selected}
+            >
+              <span style={{ color: selected ? '#d9a36a' : 'rgba(232, 228, 220, 0.35)', width: 12 }}>
+                {selected ? '▶' : ''}
+              </span>
+              <span style={{ fontFamily: SECONDARY, fontSize: 18, width: 22, opacity: selected ? 1 : 0.65 }}>
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {track.title}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      <div style={foot}>[ N ] NEXT TRACK · [ B ] PREVIOUS TRACK</div>
     </div>
   )
 }

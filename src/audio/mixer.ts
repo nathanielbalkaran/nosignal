@@ -4,20 +4,39 @@
  * This store only holds the sliders; a music volume of 0 silences music.
  */
 
-export type Channel = 'music' | 'ambience'
+export type Channel = 'music' | 'ambience' | 'sfx'
 
 export type Volumes = Record<Channel, number>
 
-export const DEFAULT_VOLUMES: Volumes = { music: 0.75, ambience: 0.2 }
+export const DEFAULT_VOLUMES: Volumes = { music: 0.75, ambience: 0.18, sfx: 0.6 }
 
 const STORAGE_KEY = 'nosignal.volumes'
+
+interface StorageLike {
+  getItem(key: string): string | null
+  setItem(key: string, value: string): void
+}
+
+function getStorage(): StorageLike | null {
+  try {
+    const g = globalThis as unknown as { localStorage?: StorageLike }
+    if (g && typeof g.localStorage?.getItem === 'function') {
+      return g.localStorage
+    }
+  } catch {
+    // Ignore: private browsing or storage unavailable
+  }
+  return null
+}
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 
 function load(): Volumes {
   const volumes = { ...DEFAULT_VOLUMES }
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const storage = getStorage()
+    if (!storage) return volumes
+    const raw = storage.getItem(STORAGE_KEY)
     if (!raw) return volumes
     const data = JSON.parse(raw) as Partial<Record<Channel, unknown>> | null
     if (!data || typeof data !== 'object') return volumes
@@ -35,7 +54,8 @@ let volumes: Volumes = load()
 const MUTE_KEY = 'nosignal.musicMuted'
 let musicMuted = (() => {
   try {
-    return window.localStorage.getItem(MUTE_KEY) === '1'
+    const storage = getStorage()
+    return storage?.getItem(MUTE_KEY) === '1'
   } catch {
     return false
   }
@@ -52,7 +72,7 @@ export const mixer = {
     if (muted === musicMuted) return
     musicMuted = muted
     try {
-      window.localStorage.setItem(MUTE_KEY, muted ? '1' : '0')
+      getStorage()?.setItem(MUTE_KEY, muted ? '1' : '0')
     } catch {
       // Ignore: the setting just won't persist.
     }
@@ -69,7 +89,7 @@ export const mixer = {
     if (v === volumes[ch]) return
     volumes = { ...volumes, [ch]: v }
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(volumes))
+      getStorage()?.setItem(STORAGE_KEY, JSON.stringify(volumes))
     } catch {
       // Ignore: settings just won't persist.
     }

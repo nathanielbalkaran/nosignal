@@ -12,7 +12,9 @@
     "nav:audit": "node scripts/nav-audit.ts",
     "test:movement": "node scripts/test-movement.ts",
     "test:bobbing": "node scripts/test-view-bobbing.ts",
-    "validate": "npm run build && npm run check:world && npm run test:movement && npm run test:bobbing",
+    "test:footsteps": "node scripts/test-footsteps.ts",
+    "test:train": "node scripts/test-train-scenery.ts",
+    "validate": "npm run build && npm run check:world && npm run test:movement && npm run test:bobbing && npm run test:footsteps && npm run test:train",
     "preview": "vite preview"
   },
   "dependencies": {

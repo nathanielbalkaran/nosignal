@@ -83,7 +83,15 @@ export function retroTexture(kind: RetroSurface): CanvasTexture {
       v[at(x, y)] = a
     }
 
-  const canvas = document.createElement('canvas')
+  const doc = (globalThis as unknown as { document?: { createElement(tag: string): unknown } }).document
+  if (!doc) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const t = new CanvasTexture({ width: n, height: n, getContext: () => null } as any)
+    cache.set(kind, t)
+    return t
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const canvas = doc.createElement('canvas') as any
   canvas.width = canvas.height = n
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('2D canvas unavailable')

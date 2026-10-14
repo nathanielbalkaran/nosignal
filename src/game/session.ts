@@ -14,12 +14,12 @@ import { restaurant } from './restaurant.ts'
  * A denied request leaves the menu up with `lockBlocked` set, as a retry hint.
  */
 
-export type GameState = 'TITLE' | 'PLAYING' | 'PAUSED' | 'WON' | 'LOST'
+export type GameState = 'TITLE' | 'PLAYING' | 'PAUSED' | 'CINEMATIC' | 'WON' | 'LOST'
 export type GameMode = 'PLAY' | 'EXPLORE'
 /** Entrance prompt: 'enter' (E works) or 'explore' (message only). */
 export type Prompt = 'enter' | 'explore' | 'restaurant' | 'cat' | 'vending' | 'phone' | 'roof' | 'arcade' | null
 /** Where the player is: the street, a restaurant scene, or one of the fixed discovery scenes. */
-export type Place = 'STREET' | 'COUNTER' | 'TABLE' | 'VENDING' | 'PHONE' | 'ROOF' | 'ROOF_SEAT' | 'ARCADE'
+export type Place = 'STREET' | 'COUNTER' | 'TABLE' | 'VENDING' | 'PHONE' | 'ROOF' | 'ROOF_SEAT' | 'ARCADE' | 'TRAIN'
 
 export interface Result {
   /** Clock at the moment the game ended. */
@@ -217,7 +217,29 @@ export const session = {
   /** E pressed at the entrance. Only Play mode can win; the deadline decides win or loss. */
   enterStation() {
     if (snap.state !== 'PLAYING' || snap.mode !== 'PLAY' || snap.place !== 'STREET' || snap.fading || snap.receiptOpen) return
-    finish(clock.elapsedMs() >= LIMIT_MS ? 'LOST' : 'WON')
+    if (clock.elapsedMs() >= LIMIT_MS) {
+      finish('LOST')
+      return
+    }
+    const elapsedMs = Math.min(clock.elapsedMs(), LIMIT_MS)
+    const result: Result = { elapsedMs, remainingMs: Math.max(0, LIMIT_MS - elapsedMs) }
+    wantPlay = false
+    achievements.unlock('homeward_bound')
+    releaseLock()
+    set({
+      state: 'CINEMATIC',
+      place: 'TRAIN',
+      result,
+      prompt: null,
+      receiptOpen: false,
+    })
+    transition(() => {})
+  },
+  finishCinematic() {
+    if (snap.state !== 'CINEMATIC') return
+    cancelTransition()
+    set({ state: 'WON', prompt: null, receiptOpen: false, fading: false })
+    releaseLock()
   },
 
   // --- the restaurant ---
@@ -333,7 +355,13 @@ export function attachSession(): () => void {
   const sync = () => syncClock()
   const onKey = (e: KeyboardEvent) => {
     // With pointer lock the browser swallows Esc and reports a lock change instead; either way pause() runs once.
-    if (e.code === 'Escape' && !e.repeat) session.pause()
+    if (e.code === 'Escape' && !e.repeat) {
+      if (snap.state === 'CINEMATIC') {
+        session.finishCinematic()
+        return
+      }
+      session.pause()
+    }
   }
   const onError = () => session.onLockFailed()
   document.addEventListener('visibilitychange', sync)

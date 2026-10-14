@@ -30,6 +30,13 @@ export type SoundName =
   | 'rattle'
   | 'train'
   | 'announce'
+  // Footsteps
+  | 'stepPavementA'
+  | 'stepPavementB'
+  | 'stepPavementC'
+  | 'stepBridgeA'
+  | 'stepBridgeB'
+  | 'stepBridgeC'
 
 const TAU = Math.PI * 2
 
@@ -259,6 +266,51 @@ function announce(seed: string): Float32Array {
   return normalise(lowpass(out, 2200), 0.8)
 }
 
+function stepPavement(seed: string): Float32Array {
+  const g = new Gen(seed)
+  const r = g.rng
+  const lenSeconds = 0.11
+  const n = Math.round(lenSeconds * SAMPLE_RATE)
+  const out = new Float32Array(n)
+
+  // 1. Low-end thud (heel impact with pavement/ground)
+  const f0 = r.range(85, 120)
+  addClick(out, 0.005, [f0, f0 * 1.4], 0.035, 0.75)
+
+  // 2. Mid-frequency scuff / sole friction on asphalt/stone
+  addNoiseBurst(out, g, 0.005, 0.045, 0.45, 350, 1600, 0.018)
+
+  // 3. Subtle micro-grit texture
+  addNoiseBurst(out, g, 0.008, 0.025, 0.18, 1800, 3400, 0.01)
+
+  // Lowpass filter to avoid harsh digital clicks
+  return normalise(lowpass(out, 1800), 0.45)
+}
+
+function stepBridge(seed: string): Float32Array {
+  const g = new Gen(seed)
+  const r = g.rng
+  const lenSeconds = 0.14
+  const n = Math.round(lenSeconds * SAMPLE_RATE)
+  const out = new Float32Array(n)
+
+  // 1. Steel plate resonant modes (hollow metallic ring)
+  const fBase = r.range(380, 460)
+  const freqs = [fBase, fBase * 1.62, fBase * 2.45, fBase * 3.8]
+  addClick(out, 0.005, freqs, 0.055, 0.7)
+
+  // 2. Hollow deck cavity thud
+  const fLow = r.range(170, 220)
+  addClick(out, 0.005, [fLow], 0.04, 0.6)
+
+  // 3. Crisp metallic transient / contact click
+  addClick(out, 0.003, [1600, 2400], 0.015, 0.35)
+  addNoiseBurst(out, g, 0.004, 0.04, 0.4, 800, 4200, 0.018)
+
+  // Retain metallic presence without piercing high frequencies
+  return normalise(lowpass(out, 3600), 0.52)
+}
+
 /** Everything the game can play, as raw samples. */
 export function makeSamples(): Record<SoundName, Float32Array> {
   return {
@@ -321,5 +373,11 @@ export function makeSamples(): Record<SoundName, Float32Array> {
     rattle: rattle('rattle'),
     train: train('train'),
     announce: announce('announce'),
+    stepPavementA: stepPavement('stepPavementA'),
+    stepPavementB: stepPavement('stepPavementB'),
+    stepPavementC: stepPavement('stepPavementC'),
+    stepBridgeA: stepBridge('stepBridgeA'),
+    stepBridgeB: stepBridge('stepBridgeB'),
+    stepBridgeC: stepBridge('stepBridgeC'),
   }
 }

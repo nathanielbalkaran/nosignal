@@ -78,11 +78,28 @@ export interface PlayerPosition {
   y: number
 }
 
-function inRect(r: OrientedRect, p: Vec2): boolean {
+export function inRect(r: OrientedRect, p: Vec2): boolean {
   const d = sub(p, r.center)
   const u = dot(d, r.axis)
   const v = d[0] * -r.axis[1] + d[1] * r.axis[0]
   return Math.abs(u) <= r.halfLength && Math.abs(v) <= r.halfWidth
+}
+
+/**
+ * Whether the player is currently standing on the elevated footbridge or its stairs.
+ * When on the ground below the footbridge deck (Hoi Pong Road carriageway/pavement),
+ * y is near 0 and this returns false.
+ */
+export function isPlayerOnFootbridge(world: World, x: number, z: number, y: number): boolean {
+  if (y > 1.0) return true
+  const p: Vec2 = [x, z]
+  for (const r of world.ramps) {
+    if (inRect(r, p)) return true
+  }
+  for (const d of world.decks) {
+    if (y > 1.0 && inRect(d, p)) return true
+  }
+  return false
 }
 
 function rampHeight(r: Ramp, p: Vec2): number {
